@@ -1,9 +1,9 @@
 "use client";
 
 import { MantineProvider } from "@mantine/core";
-import CustomTable from "@/components/Table/Custom";
 import { useMemo } from "react";
 import { MRT_ColumnDef } from "mantine-react-table";
+import GenericTable from "@/components/Table/generic";
 
 export default function Page() {
   type Person = {
@@ -182,7 +182,7 @@ export default function Page() {
     <>
       <MantineProvider>
         <div className="p-8">
-          <CustomTable columns={columns} data={data} />
+          <GenericTable columns={columns} data={data} />
         </div>
       </MantineProvider>
     </>

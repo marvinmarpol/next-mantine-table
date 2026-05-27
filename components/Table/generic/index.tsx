@@ -25,6 +25,10 @@ import { mkConfig, generateCsv, download } from 'export-to-csv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css"; //if using mantine date picker features
+import "mantine-react-table/styles.css"; //make sure MRT styles were imported in your app root (once)\\
+
 export interface GenericTableProps<T extends MRT_RowData> {
   columns: MRT_ColumnDef<T>[];
   data: T[];
