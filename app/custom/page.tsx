@@ -1,9 +1,13 @@
 "use client";
 
-import { MantineProvider } from "@mantine/core";
-import { useMemo } from "react";
+import { Flex, MantineProvider } from "@mantine/core";
+import { useMemo, useState } from "react";
 import { MRT_ColumnDef } from "mantine-react-table";
 import GenericTable from "@/components/Table/generic";
+import CustomTable, { ColumnDefinition } from "@/components/Table/Custom";
+import { Badge } from "@/components/UI/Badge";
+import { ActionIcon } from "@/components/UI/ActionIcon";
+import { IconEraser, IconTrash } from "@tabler/icons-react";
 
 export default function Page() {
   type Person = {
@@ -17,7 +21,7 @@ export default function Page() {
     extra?: any;
   };
 
-  const columns = useMemo<MRT_ColumnDef<Person>[]>(
+  const columns = useMemo<ColumnDefinition<Person>[]>(
     () => [
       {
         accessorKey: "name.firstName", //access nested data with dot notation
@@ -26,6 +30,17 @@ export default function Page() {
       {
         accessorKey: "name.lastName",
         header: "Last Name",
+        Cell: ({ row }) => (
+          <Flex gap={"md"} justify={"center"} align={"center"} w={'100%'}>
+            <ActionIcon variant="light" aria-label="eraser">
+              <IconEraser />
+            </ActionIcon>
+            <ActionIcon variant="danger" aria-label="trash" color="red">
+              <IconTrash />
+            </ActionIcon>
+          </Flex>
+        ),
+        //Cell: ({ row }) => <Badge color={"red"}><h1>{row.name.lastName}</h1></Badge>,
       },
       {
         accessorKey: "address", //normal accessorKey
@@ -178,11 +193,20 @@ export default function Page() {
     },
   ];
 
+  const PAGE_SIZE = 5;
+  const [pageIndex, setPageIndex] = useState(0);
+  const start = pageIndex * PAGE_SIZE;
+
   return (
     <>
       <MantineProvider>
         <div className="p-8">
-          <GenericTable columns={columns} data={data} />
+          <CustomTable
+            columns={columns}
+            data={data}
+            columnPinning={{ left: ["name.lastName"], right: [] }}
+            columnFilter={{ filterTypes: ["contains"] }}
+          />
         </div>
       </MantineProvider>
     </>
