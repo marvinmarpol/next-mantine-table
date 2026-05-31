@@ -34,7 +34,7 @@ const filterableColumns: ColumnDefinition<Employee>[] = [
     filterType: ["contains", "equals"],
     enableClickToCopy: true,
   },
-  { accessorKey: "jobTitle", header: "Job Title", filterType:["equals","endsWith"] },
+  { accessorKey: "jobTitle", header: "Job Title", filterType: ["equals", "endsWith"] },
   { accessorKey: "salary", header: "Salary", enableSorting: true },
   { accessorKey: "startDate", header: "Start Date", enableSorting: true },
 ];
@@ -100,7 +100,7 @@ export const WithSorting: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    sortBy: { id: "salary", desc: true },
+    sortBy: [{ id: "salary", desc: true }],
   },
 };
 
@@ -159,6 +159,33 @@ export const WithPagination: Story = {
   },
 };
 
+export const WithCursorPagination: Story = {
+  render: () => {
+    const PAGE_SIZE = 5;
+    const [pageIndex, setPageIndex] = useState(0);
+    const start = pageIndex * PAGE_SIZE;
+    const pageData = employeeData.slice(start, start + PAGE_SIZE);
+    const hasNext = start + PAGE_SIZE < employeeData.length;
+    const nextCursor = hasNext ? `cursor_page_${pageIndex + 1}` : undefined;
+
+    return (
+      <EmployeeTable
+        variant="basic-cursor"
+        columns={basicColumns}
+        data={pageData}
+        pagination={{
+          pageIndex,
+          pageSize: PAGE_SIZE,
+          rowCount: employeeData.length,
+          hasNext,
+          nextCursor,
+          onPageChange: (newPageIndex) => setPageIndex(newPageIndex),
+        }}
+      />
+    );
+  },
+};
+
 export const WithToolbarActions: Story = {
   args: {
     columns: basicColumns,
@@ -186,17 +213,26 @@ export const WithToolbarActions: Story = {
 
 export const WithCSVExport: Story = {
   args: {
-    variant: "basic-export-csv",
     columns: basicColumns,
     data: employeeData,
+    exportCSV: { enabled: true },
   },
 };
 
 export const WithPDFExport: Story = {
   args: {
-    variant: "basic-export-pdf",
     columns: basicColumns,
     data: employeeData,
+    exportPDF: { enabled: true },
+  },
+};
+
+export const WithBothExports: Story = {
+  args: {
+    columns: basicColumns,
+    data: employeeData,
+    exportCSV: { enabled: true },
+    exportPDF: { enabled: true },
   },
 };
 
@@ -204,7 +240,7 @@ export const WithCustomCell: Story = {
   args: {
     columns: customCellColumns,
     data: employeeData,
-    sortBy: { id: "salary", desc: true },
+    sortBy: [{ id: "salary", desc: true }],
     globalFilter: {
       filterPlaceholder: "Search employees...",
       onGlobalFilterChange: fn(),
@@ -230,7 +266,7 @@ export const AllFeatures: Story = {
       <EmployeeTable
         columns={filterableColumns}
         data={employeeData.slice(start, start + PAGE_SIZE)}
-        sortBy={{ id: "firstName", desc: false }}
+        sortBy={[{ id: "firstName", desc: false }]}
         pagination={{
           pageIndex,
           pageSize: PAGE_SIZE,
@@ -259,20 +295,18 @@ export const AllFeatures: Story = {
 export const AllVariants = {
   render: () => (
     <>
-      {(["basic", "basic-export-csv", "basic-export-pdf"] as const).map(
-        (variant) => (
-          <div key={variant} style={{ marginBottom: 48 }}>
-            <h3 style={{ fontFamily: "sans-serif", padding: "0 16px" }}>
-              {variant}
-            </h3>
-            <CustomTable<Employee>
-              variant={variant}
-              columns={basicColumns}
-              data={employeeData.slice(0, 5)}
-            />
-          </div>
-        ),
-      )}
+      {(["basic", "basic-cursor"] as const).map((variant) => (
+        <div key={variant} style={{ marginBottom: 48 }}>
+          <h3 style={{ fontFamily: "sans-serif", padding: "0 16px" }}>
+            {variant}
+          </h3>
+          <CustomTable<Employee>
+            variant={variant}
+            columns={basicColumns}
+            data={employeeData.slice(0, 5)}
+          />
+        </div>
+      ))}
     </>
   ),
 };

@@ -26,6 +26,7 @@ export default function Page() {
       {
         accessorKey: "name.firstName", //access nested data with dot notation
         header: "First Name",
+        enableClickToCopy: true
       },
       {
         accessorKey: "name.lastName",

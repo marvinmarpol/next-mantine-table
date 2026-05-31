@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import {
   MantineReactTable,
   useMantineReactTable,
@@ -19,14 +19,34 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "mantine-react-table/styles.css";
 
-export type TableVariant = "basic" | "basic-export-csv" | "basic-export-pdf";
-export type FilterType = "equals" | "startsWith" | "endsWith" | "contains";
+type TableVariant = "basic" | "basic-cursor";
+type FilterType =
+  | "equals"
+  | "startsWith"
+  | "endsWith"
+  | "contains"
+  | "empty"
+  | "notEmpty"
+  | "notEquals"
+  | "greaterThan"
+  | "lessThan";
 
-export type ToolbarAction = {
+type SortableColumn = {
+  id: string;
+  desc: boolean;
+};
+
+type ToolbarAction = {
   label: string;
   icon?: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+};
+
+type ExportConfig<T> = {
+  enabled: boolean;
+  handleExportRows?: (rows: T[], type: "page" | "selected") => void;
+  handleExportAll?: (data: T[]) => void;
 };
 
 export type ColumnDefinition<T> = {
@@ -47,14 +67,19 @@ export interface CustomTableProps<T extends Record<string, any>> {
   columns: ColumnDefinition<T>[];
   data: T[];
   isLoading?: boolean;
-  sortBy?: { id: string; desc: boolean };
+  sortBy?: SortableColumn[];
   pagination?: {
     pageIndex: number;
     pageSize: number;
     rowCount: number;
     nextCursor?: string | number;
-    prevCursor?: string | number;
-    onPageChange: (pageIndex: number, pageSize: number) => void;
+    hasNext?: boolean;
+    onPageChange: (
+      pageIndex: number,
+      pageSize: number,
+      hasNext: boolean,
+      nextCursor?: string | number,
+    ) => void;
   };
   globalFilter?: {
     filterType?: FilterType;
@@ -69,14 +94,9 @@ export interface CustomTableProps<T extends Record<string, any>> {
     right: string[];
   };
   topToolbarActions?: ToolbarAction[];
+  exportCSV?: ExportConfig<T>;
+  exportPDF?: ExportConfig<T>;
 }
-
-const VARIANT_EXPORT_MAP: Record<TableVariant, { csv: boolean; pdf: boolean }> =
-  {
-    basic: { csv: false, pdf: false },
-    "basic-export-csv": { csv: true, pdf: false },
-    "basic-export-pdf": { csv: false, pdf: true },
-  };
 
 function mapColumns<T extends Record<string, any>>(
   cols: ColumnDefinition<T>[],
@@ -125,39 +145,46 @@ export default function CustomTable<T extends Record<string, any>>({
   columnFilter,
   columnPinning,
   topToolbarActions,
+  exportCSV,
+  exportPDF,
 }: CustomTableProps<T>) {
-  const { csv: enableCSV, pdf: enablePDF } = VARIANT_EXPORT_MAP[variant];
+  const isCursorVariant = variant === "basic-cursor";
+  const hasExport = !!(exportCSV?.enabled || exportPDF?.enabled);
   const hasColumnFilter =
     !!columnFilter || columns.some((c) => !!c.filterType?.length);
   const hasToolbarContent = !!(
     topToolbarActions?.length ||
-    enableCSV ||
-    enablePDF
+    exportCSV?.enabled ||
+    exportPDF?.enabled
   );
+
+  const [cursorHistory, setCursorHistory] = useState<
+    (string | number | undefined)[]
+  >([]);
 
   const csvConfig = useMemo(
     () =>
-      enableCSV
+      exportCSV?.enabled
         ? mkConfig({
             fieldSeparator: ",",
             decimalSeparator: ".",
             useKeysAsHeaders: true,
           })
         : null,
-    [enableCSV],
+    [exportCSV?.enabled],
   );
 
-  const handleCSVExport = () => {
+  const defaultCSVExport = (rows: T[]) => {
     if (!csvConfig) return;
-    const csv = generateCsv(csvConfig)(data as any);
+    const csv = generateCsv(csvConfig)(rows as any);
     download(csvConfig)(csv);
   };
 
-  const handlePDFExport = () => {
+  const defaultPDFExport = (rows: T[]) => {
     const doc = new jsPDF();
     const headers = columns.map((c) => c.header);
-    const rows = data.map((row) => Object.values(row));
-    autoTable(doc, { head: [headers], body: rows });
+    const rowData = rows.map((row) => Object.values(row));
+    autoTable(doc, { head: [headers], body: rowData });
     doc.save("table-export.pdf");
   };
 
@@ -173,7 +200,7 @@ export default function CustomTable<T extends Record<string, any>>({
 
     state: {
       isLoading: isLoading ?? false,
-      ...(sortBy && { sorting: [{ id: sortBy.id, desc: sortBy.desc }] }),
+      ...(sortBy && { sorting: sortBy }),
       ...(pagination && {
         pagination: {
           pageIndex: pagination.pageIndex,
@@ -185,31 +212,20 @@ export default function CustomTable<T extends Record<string, any>>({
     initialState: {
       showColumnFilters: true,
       ...(columnPinning && {
-        columnPinning: { left: columnPinning.left, right: columnPinning.right },
+        columnPinning: {
+          left: columnPinning.left,
+          right: columnPinning.right,
+        },
       }),
     },
 
-    // Sorting
     enableSorting: !!sortBy,
-
-    // Pagination
-    ...(pagination && {
-      manualPagination: true,
-      rowCount: pagination.rowCount,
-      onPaginationChange: (updater) => {
-        const current = {
-          pageIndex: pagination.pageIndex,
-          pageSize: pagination.pageSize,
-        };
-
-        console.log(current, updater)
-        const next = typeof updater === "function" ? updater(current) : updater;
-        pagination.onPageChange(next.pageIndex, next.pageSize);
-      },
-    }),
-
-    // Global filter
+    enableRowSelection: hasExport,
+    enableColumnFilters: hasColumnFilter,
+    enableColumnFilterModes: hasColumnFilter,
+    enableColumnPinning: !!columnPinning,
     enableGlobalFilter: !!globalFilter,
+
     ...(globalFilter && {
       mantineSearchTextInputProps: {
         placeholder: globalFilter.filterPlaceholder,
@@ -220,52 +236,173 @@ export default function CustomTable<T extends Record<string, any>>({
       },
     }),
 
-    // Column filter (hidden by default per spec §c, toggled via filter icon)
-    enableColumnFilters: hasColumnFilter,
-    enableColumnFilterModes: hasColumnFilter,
+    ...(pagination && {
+      manualPagination: true,
+      rowCount: pagination.rowCount,
+      ...(!isCursorVariant && {
+        onPaginationChange: (updater) => {
+          const current = {
+            pageIndex: pagination.pageIndex,
+            pageSize: pagination.pageSize,
+          };
+          const next =
+            typeof updater === "function" ? updater(current) : updater;
+          pagination.onPageChange(
+            next.pageIndex,
+            next.pageSize,
+            pagination.hasNext ?? false,
+            pagination.nextCursor,
+          );
+        },
+      }),
+    }),
 
-    // Column pinning
-    enableColumnPinning: !!columnPinning,
-
-    // Toolbar actions (spec §i: upper-right, purple theme)
     renderTopToolbarCustomActions: hasToolbarContent
-      ? () => (
-          <Flex gap="xs" align="center" wrap="wrap">
-            {topToolbarActions?.map((action, i) => (
-              <Button
-                key={i}
-                variant="primary"
-                leftIcon={action.icon}
-                disabled={action.disabled}
-                onClick={action.onClick}
-              >
-                {action.label}
-              </Button>
-            ))}
-            {enableCSV && (
-              <Button
-                variant="light"
-                leftIcon={<IconDownload size={16} />}
-                onClick={handleCSVExport}
-              >
-                Export CSV
-              </Button>
-            )}
-            {enablePDF && (
-              <Button
-                variant="light"
-                leftIcon={<IconDownload size={16} />}
-                onClick={handlePDFExport}
-              >
-                Export PDF
-              </Button>
-            )}
-          </Flex>
-        )
+      ? ({ table }) => {
+          const selectedRows = table
+            .getSelectedRowModel()
+            .rows.map((r) => r.original as T);
+          const pageRows = table
+            .getRowModel()
+            .rows.map((r) => r.original as T);
+
+          return (
+            <Flex gap="xs" align="center" wrap="wrap">
+              {topToolbarActions?.map((action, i) => (
+                <Button
+                  key={i}
+                  variant="primary"
+                  leftIcon={action.icon}
+                  disabled={action.disabled}
+                  onClick={action.onClick}
+                >
+                  {action.label}
+                </Button>
+              ))}
+
+              {exportCSV?.enabled && (
+                <>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    onClick={() =>
+                      exportCSV.handleExportAll
+                        ? exportCSV.handleExportAll(data)
+                        : defaultCSVExport(data)
+                    }
+                  >
+                    Export All (CSV)
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    onClick={() =>
+                      exportCSV.handleExportRows
+                        ? exportCSV.handleExportRows(pageRows, "page")
+                        : defaultCSVExport(pageRows)
+                    }
+                  >
+                    Export Page (CSV)
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    disabled={selectedRows.length === 0}
+                    onClick={() =>
+                      exportCSV.handleExportRows
+                        ? exportCSV.handleExportRows(selectedRows, "selected")
+                        : defaultCSVExport(selectedRows)
+                    }
+                  >
+                    Export Selected (CSV)
+                  </Button>
+                </>
+              )}
+
+              {exportPDF?.enabled && (
+                <>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    onClick={() =>
+                      exportPDF.handleExportAll
+                        ? exportPDF.handleExportAll(data)
+                        : defaultPDFExport(data)
+                    }
+                  >
+                    Export All (PDF)
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    onClick={() =>
+                      exportPDF.handleExportRows
+                        ? exportPDF.handleExportRows(pageRows, "page")
+                        : defaultPDFExport(pageRows)
+                    }
+                  >
+                    Export Page (PDF)
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftIcon={<IconDownload size={16} />}
+                    disabled={selectedRows.length === 0}
+                    onClick={() =>
+                      exportPDF.handleExportRows
+                        ? exportPDF.handleExportRows(selectedRows, "selected")
+                        : defaultPDFExport(selectedRows)
+                    }
+                  >
+                    Export Selected (PDF)
+                  </Button>
+                </>
+              )}
+            </Flex>
+          );
+        }
       : undefined,
+
+    ...(isCursorVariant &&
+      pagination && {
+        renderBottomToolbar: () => (
+          <Flex gap="xs" align="center" justify="flex-end" p="xs">
+            <Button
+              variant="light"
+              disabled={pagination.pageIndex === 0}
+              onClick={() => {
+                const newHistory = cursorHistory.slice(0, -1);
+                setCursorHistory(newHistory);
+                pagination.onPageChange(
+                  pagination.pageIndex - 1,
+                  pagination.pageSize,
+                  true,
+                  newHistory[newHistory.length - 1],
+                );
+              }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="light"
+              disabled={!pagination.hasNext}
+              onClick={() => {
+                const newHistory = [...cursorHistory, pagination.nextCursor];
+                setCursorHistory(newHistory);
+                pagination.onPageChange(
+                  pagination.pageIndex + 1,
+                  pagination.pageSize,
+                  pagination.hasNext ?? false,
+                  pagination.nextCursor,
+                );
+              }}
+            >
+              Next
+            </Button>
+          </Flex>
+        ),
+      }),
   };
 
   const table = useMantineReactTable(opts);
-
   return <MantineReactTable table={table} />;
 }
