@@ -8,11 +8,12 @@ import {
   type MRT_FilterOption,
   type MRT_TableOptions,
 } from "mantine-react-table";
-import { Flex } from "@mantine/core";
+import { Flex, Select } from "@mantine/core";
+import { IconDownload } from "@tabler/icons-react";
 import { mkConfig, generateCsv, download } from "export-to-csv";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { IconDownload } from "@tabler/icons-react";
+
 import { Button } from "@/components/UI/Button";
 
 import "@mantine/core/styles.css";
@@ -20,6 +21,7 @@ import "@mantine/dates/styles.css";
 import "mantine-react-table/styles.css";
 
 type TableVariant = "basic" | "basic-cursor";
+
 type FilterType =
   | "equals"
   | "startsWith"
@@ -36,17 +38,25 @@ type SortableColumn = {
   desc: boolean;
 };
 
+type ActionProps = {
+  label?: string;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
+};
+
 type ToolbarAction = {
-  label: string;
-  icon?: ReactNode;
+  actionProps: ActionProps;
   onClick: () => void;
   disabled?: boolean;
 };
 
 type ExportConfig<T> = {
   enabled: boolean;
+  label?: string;
+  actionProps?: ActionProps;
   handleExportRows?: (rows: T[], type: "page" | "selected") => void;
   handleExportAll?: (data: T[]) => void;
+  filenameWithoutExtension: string;
 };
 
 export type ColumnDefinition<T> = {
@@ -67,6 +77,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
   columns: ColumnDefinition<T>[];
   data: T[];
   isLoading?: boolean;
+  enableClickToCopy?: boolean;
   sortBy?: SortableColumn[];
   pagination?: {
     pageIndex: number;
@@ -74,6 +85,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
     rowCount: number;
     nextCursor?: string | number;
     hasNext?: boolean;
+    pageSizeOptions?: number[];
     onPageChange: (
       pageIndex: number,
       pageSize: number,
@@ -82,11 +94,11 @@ export interface CustomTableProps<T extends Record<string, any>> {
     ) => void;
   };
   globalFilter?: {
-    filterType?: FilterType;
     filterPlaceholder: string;
     onGlobalFilterChange: (value: string) => void;
   };
   columnFilter?: {
+    showColumnFilters?: boolean;
     filterTypes?: FilterType[];
   };
   columnPinning?: {
@@ -134,6 +146,15 @@ function mapColumns<T extends Record<string, any>>(
   });
 }
 
+const defaultFilterTypes: FilterType[] = [
+  "equals",
+  "startsWith",
+  "empty",
+  "notEmpty",
+];
+
+const defaultExportFilename = "table-export";
+
 export default function CustomTable<T extends Record<string, any>>({
   variant = "basic",
   columns,
@@ -142,7 +163,7 @@ export default function CustomTable<T extends Record<string, any>>({
   sortBy,
   pagination,
   globalFilter,
-  columnFilter,
+  columnFilter = { filterTypes: defaultFilterTypes },
   columnPinning,
   topToolbarActions,
   exportCSV,
@@ -158,6 +179,13 @@ export default function CustomTable<T extends Record<string, any>>({
     exportPDF?.enabled
   );
 
+  const csvIcon = exportCSV?.actionProps?.leftIcon ?? <IconDownload size={16} />;
+  const csvLabel = exportCSV?.label ?? "CSV";
+  const pdfIcon = exportPDF?.actionProps?.leftIcon ?? <IconDownload size={16} />;
+  const pdfLabel = exportPDF?.label ?? "PDF";
+
+  const pageSizeOptions = pagination?.pageSizeOptions ?? [10, 25, 50, 100];
+
   const [cursorHistory, setCursorHistory] = useState<
     (string | number | undefined)[]
   >([]);
@@ -169,6 +197,7 @@ export default function CustomTable<T extends Record<string, any>>({
             fieldSeparator: ",",
             decimalSeparator: ".",
             useKeysAsHeaders: true,
+            filename: `${exportCSV.filenameWithoutExtension}.csv`,
           })
         : null,
     [exportCSV?.enabled],
@@ -185,7 +214,9 @@ export default function CustomTable<T extends Record<string, any>>({
     const headers = columns.map((c) => c.header);
     const rowData = rows.map((row) => Object.values(row));
     autoTable(doc, { head: [headers], body: rowData });
-    doc.save("table-export.pdf");
+    doc.save(
+      `${exportPDF?.filenameWithoutExtension || defaultExportFilename}.pdf`,
+    );
   };
 
   const mappedColumns = useMemo(
@@ -210,7 +241,7 @@ export default function CustomTable<T extends Record<string, any>>({
     },
 
     initialState: {
-      showColumnFilters: true,
+      showColumnFilters: columnFilter?.showColumnFilters ?? false,
       ...(columnPinning && {
         columnPinning: {
           left: columnPinning.left,
@@ -262,9 +293,7 @@ export default function CustomTable<T extends Record<string, any>>({
           const selectedRows = table
             .getSelectedRowModel()
             .rows.map((r) => r.original as T);
-          const pageRows = table
-            .getRowModel()
-            .rows.map((r) => r.original as T);
+          const pageRows = table.getRowModel().rows.map((r) => r.original as T);
 
           return (
             <Flex gap="xs" align="center" wrap="wrap">
@@ -272,11 +301,12 @@ export default function CustomTable<T extends Record<string, any>>({
                 <Button
                   key={i}
                   variant="primary"
-                  leftIcon={action.icon}
+                  leftIcon={action.actionProps.leftIcon}
+                  rightIcon={action.actionProps.rightIcon}
                   disabled={action.disabled}
                   onClick={action.onClick}
                 >
-                  {action.label}
+                  {action.actionProps.label}
                 </Button>
               ))}
 
@@ -284,29 +314,29 @@ export default function CustomTable<T extends Record<string, any>>({
                 <>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={csvIcon}
                     onClick={() =>
                       exportCSV.handleExportAll
                         ? exportCSV.handleExportAll(data)
                         : defaultCSVExport(data)
                     }
                   >
-                    Export All (CSV)
+                    Export All ({csvLabel})
                   </Button>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={csvIcon}
                     onClick={() =>
                       exportCSV.handleExportRows
                         ? exportCSV.handleExportRows(pageRows, "page")
                         : defaultCSVExport(pageRows)
                     }
                   >
-                    Export Page (CSV)
+                    Export Page ({csvLabel})
                   </Button>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={csvIcon}
                     disabled={selectedRows.length === 0}
                     onClick={() =>
                       exportCSV.handleExportRows
@@ -314,7 +344,7 @@ export default function CustomTable<T extends Record<string, any>>({
                         : defaultCSVExport(selectedRows)
                     }
                   >
-                    Export Selected (CSV)
+                    Export Selected ({csvLabel})
                   </Button>
                 </>
               )}
@@ -323,29 +353,29 @@ export default function CustomTable<T extends Record<string, any>>({
                 <>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={pdfIcon}
                     onClick={() =>
                       exportPDF.handleExportAll
                         ? exportPDF.handleExportAll(data)
                         : defaultPDFExport(data)
                     }
                   >
-                    Export All (PDF)
+                    Export All ({pdfLabel})
                   </Button>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={pdfIcon}
                     onClick={() =>
                       exportPDF.handleExportRows
                         ? exportPDF.handleExportRows(pageRows, "page")
                         : defaultPDFExport(pageRows)
                     }
                   >
-                    Export Page (PDF)
+                    Export Page ({pdfLabel})
                   </Button>
                   <Button
                     variant="light"
-                    leftIcon={<IconDownload size={16} />}
+                    leftIcon={pdfIcon}
                     disabled={selectedRows.length === 0}
                     onClick={() =>
                       exportPDF.handleExportRows
@@ -353,7 +383,7 @@ export default function CustomTable<T extends Record<string, any>>({
                         : defaultPDFExport(selectedRows)
                     }
                   >
-                    Export Selected (PDF)
+                    Export Selected ({pdfLabel})
                   </Button>
                 </>
               )}
@@ -366,6 +396,18 @@ export default function CustomTable<T extends Record<string, any>>({
       pagination && {
         renderBottomToolbar: () => (
           <Flex gap="xs" align="center" justify="flex-end" p="xs">
+            <Select
+              size="sm"
+              w={120}
+              data={pageSizeOptions.map((n) => ({ value: String(n), label: `${n} rows` }))}
+              value={String(pagination.pageSize)}
+              onChange={(val) => {
+                if (!val) return;
+                const newSize = Number(val);
+                setCursorHistory([]);
+                pagination.onPageChange(0, newSize, pagination.hasNext ?? false, undefined);
+              }}
+            />
             <Button
               variant="light"
               disabled={pagination.pageIndex === 0}

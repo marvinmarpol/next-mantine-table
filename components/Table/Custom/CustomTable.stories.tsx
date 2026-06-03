@@ -34,7 +34,11 @@ const filterableColumns: ColumnDefinition<Employee>[] = [
     filterType: ["contains", "equals"],
     enableClickToCopy: true,
   },
-  { accessorKey: "jobTitle", header: "Job Title", filterType: ["equals", "endsWith"] },
+  {
+    accessorKey: "jobTitle",
+    header: "Job Title",
+    filterType: ["equals", "endsWith"],
+  },
   { accessorKey: "salary", header: "Salary", enableSorting: true },
   { accessorKey: "startDate", header: "Start Date", enableSorting: true },
 ];
@@ -140,19 +144,22 @@ export const WithColumnPinning: Story = {
 
 export const WithPagination: Story = {
   render: () => {
-    const PAGE_SIZE = 5;
+    const [pageSize, setPageSize] = useState(5);
     const [pageIndex, setPageIndex] = useState(0);
-    const start = pageIndex * PAGE_SIZE;
+    const start = pageIndex * pageSize;
 
     return (
       <EmployeeTable
         columns={basicColumns}
-        data={employeeData.slice(start, start + PAGE_SIZE)}
+        data={employeeData.slice(start, start + pageSize)}
         pagination={{
           pageIndex,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           rowCount: employeeData.length,
-          onPageChange: (newPageIndex) => setPageIndex(newPageIndex),
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
         }}
       />
     );
@@ -161,11 +168,11 @@ export const WithPagination: Story = {
 
 export const WithCursorPagination: Story = {
   render: () => {
-    const PAGE_SIZE = 5;
     const [pageIndex, setPageIndex] = useState(0);
-    const start = pageIndex * PAGE_SIZE;
-    const pageData = employeeData.slice(start, start + PAGE_SIZE);
-    const hasNext = start + PAGE_SIZE < employeeData.length;
+    const [pageSize, setPageSize] = useState(10);
+    const start = pageIndex * pageSize;
+    const pageData = employeeData.slice(start, start + pageSize);
+    const hasNext = start + pageSize < employeeData.length;
     const nextCursor = hasNext ? `cursor_page_${pageIndex + 1}` : undefined;
 
     return (
@@ -175,11 +182,15 @@ export const WithCursorPagination: Story = {
         data={pageData}
         pagination={{
           pageIndex,
-          pageSize: PAGE_SIZE,
+          pageSize,
           rowCount: employeeData.length,
           hasNext,
           nextCursor,
-          onPageChange: (newPageIndex) => setPageIndex(newPageIndex),
+          pageSizeOptions: [10, 25, 50],
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
         }}
       />
     );
@@ -192,18 +203,18 @@ export const WithToolbarActions: Story = {
     data: employeeData.slice(0, 10),
     topToolbarActions: [
       {
-        label: "Add Employee",
-        icon: <IconPlus size={16} />,
+        actionProps: {
+          label: "Add Employee",
+          leftIcon: <IconPlus size={16} />,
+        },
         onClick: fn(),
       },
       {
-        label: "Upload",
-        icon: <IconUpload size={16} />,
+        actionProps: { label: "Upload", leftIcon: <IconUpload size={16} /> },
         onClick: fn(),
       },
       {
-        label: "Refresh",
-        icon: <IconRefresh size={16} />,
+        actionProps: { label: "Refresh", leftIcon: <IconRefresh size={16} /> },
         onClick: fn(),
         disabled: true,
       },
@@ -215,7 +226,7 @@ export const WithCSVExport: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportCSV: { enabled: true },
+    exportCSV: { enabled: true, filenameWithoutExtension: "employee-report" },
   },
 };
 
@@ -223,7 +234,7 @@ export const WithPDFExport: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportPDF: { enabled: true },
+    exportPDF: { enabled: true, filenameWithoutExtension: "employee-report" },
   },
 };
 
@@ -231,8 +242,8 @@ export const WithBothExports: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportCSV: { enabled: true },
-    exportPDF: { enabled: true },
+    exportCSV: { enabled: true, filenameWithoutExtension: "employee-report" },
+    exportPDF: { enabled: true, filenameWithoutExtension: "employee-report" },
   },
 };
 
@@ -281,11 +292,19 @@ export const AllFeatures: Story = {
         columnPinning={{ left: ["firstName"], right: [] }}
         topToolbarActions={[
           {
-            label: "Add Employee",
-            icon: <IconPlus size={16} />,
+            actionProps: {
+              label: "Add Employee",
+              leftIcon: <IconPlus size={16} />,
+            },
             onClick: fn(),
           },
-          { label: "Refresh", icon: <IconRefresh size={16} />, onClick: fn() },
+          {
+            actionProps: {
+              label: "Refresh",
+              leftIcon: <IconRefresh size={16} />,
+            },
+            onClick: fn(),
+          },
         ]}
       />
     );
