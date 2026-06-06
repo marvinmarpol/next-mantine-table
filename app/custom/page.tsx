@@ -204,7 +204,10 @@ export default function Page() {
             refresh={{fn: ()=>{alert('refresh')}}}
             reset={{fn: ()=>{alert('reset')}}}
             sortBy={[{ id: "name.firstName", desc: false }, { id: "address", desc: true }]}
-            pagination={{
+            globalFilter={{
+              //onGlobalFilterChange: (value)=>{console.log(value)}
+            }}
+            /* pagination={{
               pageIndex: 0,
               pageSize: 10,
               rowCount: data.length,
@@ -213,7 +216,7 @@ export default function Page() {
               onPageChange: (newPageIndex, newPageSize)=>{
                 setPageIndex(newPageIndex);
               }
-            }}
+            }} */
           />
         </div>
       </MantineProvider>

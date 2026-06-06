@@ -287,6 +287,7 @@ export const WithCustomCell: Story = {
     sortBy: [{ id: "salary", desc: true }],
     globalFilter: {
       filterPlaceholder: "Search employees...",
+      keyColumns: ["firstName"],
       onGlobalFilterChange: fn(),
     },
   },

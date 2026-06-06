@@ -83,7 +83,10 @@ export interface CustomTableProps<T extends Record<string, any>> {
   columns: ColumnDefinition<T>[];
   data: T[];
   isLoading?: boolean;
-  sortBy?: SortableColumn[];
+  sort: {
+    sortBy?: SortableColumn[];
+    onSortingChange?: (sorting: SortableColumn[]) => void;
+  };
   noDataFallback?: ReactNode;
   reset?: {
     fn: () => void;
@@ -118,11 +121,14 @@ export interface CustomTableProps<T extends Record<string, any>> {
   };
   globalFilter?: {
     filterPlaceholder?: string;
-    onGlobalFilterChange: (value: string) => void;
+    onGlobalFilterChange?: (value: string) => void;
+    keyColumns?: string[];
   };
   columnFilter?: {
     showColumnFilters?: boolean;
     filterTypes?: FilterType[];
+    onFiltersChange?: (filters: { id: string; value: unknown }[]) => void;
+    onFilterFnsChange?: (fns: Record<string, string>) => void;
   };
   columnPinning?: {
     left: string[];
@@ -179,7 +185,7 @@ export default function CustomTable<T extends Record<string, any>>({
   refresh,
   error,
   detailPanel,
-  sortBy,
+  sort,
   pagination,
   globalFilter,
   columnFilter,
@@ -215,12 +221,20 @@ export default function CustomTable<T extends Record<string, any>>({
   const pageSizeOptions = pagination?.pageSizeOptions ?? [5, 10, 25, 50, 100];
 
   const [sorting, setSorting] = useState<MRT_SortingState>(
-    (sortBy as MRT_SortingState) ?? [],
+    (sort.sortBy as MRT_SortingState) ?? [],
   );
 
   const [cursorHistory, setCursorHistory] = useState<
     (string | number | undefined)[]
   >([]);
+
+  const [columnFilters, setColumnFilters] = useState<
+    { id: string; value: unknown }[]
+  >([]);
+
+  const [columnFilterFns, setColumnFilterFns] = useState<
+    Record<string, string>
+  >({});
 
   const csvConfig = useMemo(
     () =>
@@ -249,10 +263,16 @@ export default function CustomTable<T extends Record<string, any>>({
     doc.save(pdfFilename.replaceAll(".pdf", ""));
   };
 
-  const mappedColumns = useMemo(
-    () => mapColumns(columns),
-    [columns, columnFilter?.filterTypes],
-  );
+  const mappedColumns = useMemo(() => {
+    const cols = mapColumns(columns);
+    if (!globalFilter?.keyColumns) return cols;
+    return cols.map((col) => ({
+      ...col,
+      enableGlobalFilter: globalFilter.keyColumns!.includes(
+        col.accessorKey as string,
+      ),
+    }));
+  }, [columns, columnFilter?.filterTypes, globalFilter?.keyColumns]);
 
   const renderExportButtons = (selectedRows: T[], pageRows: T[]): ReactNode => (
     <>
@@ -438,6 +458,10 @@ export default function CustomTable<T extends Record<string, any>>({
           pageSize: pagination.pageSize,
         },
       }),
+      ...(columnFilter?.onFiltersChange && { columnFilters }),
+      ...(columnFilter?.onFilterFnsChange && {
+        columnFilterFns: columnFilterFns as Record<string, MRT_FilterOption>,
+      }),
     },
 
     initialState: {
@@ -450,7 +474,9 @@ export default function CustomTable<T extends Record<string, any>>({
       }),
     },
 
-    enableSorting: !!sortBy,
+    manualSorting: !!sort.onSortingChange,
+    manualFiltering: !!columnFilter?.onFiltersChange,
+    enableSorting: !!sort.sortBy,
     enableRowSelection: hasExport,
     enableColumnFilters: hasColumnFilter,
     enableColumnFilterModes: hasColumnFilter,
@@ -483,14 +509,38 @@ export default function CustomTable<T extends Record<string, any>>({
       mantineSearchTextInputProps: {
         placeholder: globalFilter.filterPlaceholder ?? defaultSearchPlaceholder,
       },
-      onGlobalFilterChange: (updater: any) => {
-        const value = typeof updater === "function" ? updater("") : updater;
-        globalFilter.onGlobalFilterChange(String(value ?? ""));
+      ...(globalFilter.onGlobalFilterChange && {
+        onGlobalFilterChange: (updater: any) => {
+          const value = typeof updater === "function" ? updater("") : updater;
+          globalFilter.onGlobalFilterChange!(String(value ?? ""));
+        },
+      }),
+    }),
+
+    ...(sort.sortBy && {
+      onSortingChange: (updater: any) => {
+        const next = typeof updater === "function" ? updater(sorting) : updater;
+        setSorting(next);
+        sort.onSortingChange?.(next as SortableColumn[]);
       },
     }),
 
-    ...(sortBy && {
-      onSortingChange: setSorting,
+    ...(columnFilter?.onFiltersChange && {
+      onColumnFiltersChange: (updater: any) => {
+        const next =
+          typeof updater === "function" ? updater(columnFilters) : updater;
+        setColumnFilters(next);
+        columnFilter.onFiltersChange!(next);
+      },
+    }),
+
+    ...(columnFilter?.onFilterFnsChange && {
+      onColumnFilterFnsChange: (updater: any) => {
+        const next =
+          typeof updater === "function" ? updater(columnFilterFns) : updater;
+        setColumnFilterFns(next);
+        columnFilter.onFilterFnsChange!(next);
+      },
     }),
 
     ...(pagination && {
@@ -595,6 +645,7 @@ export default function CustomTable<T extends Record<string, any>>({
             {renderExportButtons(selectedRows, pageRows)}
             {globalFilter && (
               <TextInput
+                value={table.getState().globalFilter ?? ""}
                 placeholder={
                   globalFilter.filterPlaceholder ?? defaultSearchPlaceholder
                 }
