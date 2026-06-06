@@ -179,7 +179,7 @@ export const WithCursorPagination: Story = {
 
     return (
       <EmployeeTable
-        variant="basic-cursor"
+        variant="basic"
         columns={basicColumns}
         data={pageData}
         pagination={{
@@ -241,7 +241,7 @@ export const WithCSVExport: Story = {
     data: employeeData,
     exportCSV: {
       enabled: true,
-      filename: "employee-report",
+      filename: "employee-report.csv",
       leftIcon: <IconPlus size={16} />,
       wrapper: (btns) => (
         <Flex
@@ -260,7 +260,7 @@ export const WithPDFExport: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportPDF: { enabled: true, filename: "employee-report" },
+    exportPDF: { enabled: true, color: 'red', filename: "employee-reportes.pdf" },
   },
 };
 
@@ -270,17 +270,13 @@ export const WithBothExports: Story = {
     data: employeeData,
     exportCSV: {
       enabled: true,
-      filename: "employee-report.csv",
       wrapper: (btns) => (
-        <Flex
-          gap="xs"
-          w="100%"
-        >
+        <Flex gap="xs" w="100%">
           {btns}
         </Flex>
       ),
     },
-    exportPDF: { enabled: true, filename: "employee-report.pdf" },
+    exportPDF: { enabled: true },
   },
 };
 
@@ -348,7 +344,7 @@ export const AllFeatures: Story = {
 export const AllVariants = {
   render: () => (
     <>
-      {(["basic", "basic-cursor"] as const).map((variant) => (
+      {(["basic", "headless"] as const).map((variant) => (
         <div key={variant} style={{ marginBottom: 48 }}>
           <h3 style={{ fontFamily: "sans-serif", padding: "0 16px" }}>
             {variant}
