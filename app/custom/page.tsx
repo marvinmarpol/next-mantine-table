@@ -26,22 +26,15 @@ export default function Page() {
       {
         accessorKey: "name.firstName", //access nested data with dot notation
         header: "First Name",
-        enableClickToCopy: true
       },
       {
         accessorKey: "name.lastName",
         header: "Last Name",
         Cell: ({ row }) => (
-          <Flex gap={"md"} justify={"center"} align={"center"} w={'100%'}>
-            <ActionIcon variant="light" aria-label="eraser">
-              <IconEraser />
-            </ActionIcon>
-            <ActionIcon variant="danger" aria-label="trash" color="red">
-              <IconTrash />
-            </ActionIcon>
-          </Flex>
+          <Badge color={"green"}>
+            <h1>{row.name.lastName}</h1>
+          </Badge>
         ),
-        //Cell: ({ row }) => <Badge color={"red"}><h1>{row.name.lastName}</h1></Badge>,
       },
       {
         accessorKey: "address", //normal accessorKey
@@ -190,7 +183,7 @@ export default function Page() {
       address: "261 Battle Ford",
       city: "Columbus",
       state: "Ohio",
-      extra: <button onClick={() => alert("re")}>oi</button>,
+      extra: <button onClick={() => alert("re")}>extra</button>,
     },
   ];
 
@@ -203,10 +196,11 @@ export default function Page() {
       <MantineProvider>
         <div className="p-8">
           <CustomTable
+            variant="basic"
             columns={columns}
             data={data}
-            columnPinning={{ left: ["name.lastName"], right: [] }}
-            columnFilter={{ filterTypes: ["contains"] }}
+            enableClickToCopy={true}
+            sortBy={[{ id: "name.firstName", desc: false }, { id: "address", desc: true }]}
           />
         </div>
       </MantineProvider>

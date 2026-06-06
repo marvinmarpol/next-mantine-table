@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { Fragment, ReactNode, useMemo, useState } from "react";
 import {
   MantineReactTable,
   useMantineReactTable,
@@ -9,7 +9,12 @@ import {
   type MRT_TableOptions,
 } from "mantine-react-table";
 import { Flex, Select } from "@mantine/core";
-import { IconDownload } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconCsv,
+  IconPdf,
+} from "@tabler/icons-react";
 import { mkConfig, generateCsv, download } from "export-to-csv";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -19,6 +24,7 @@ import { Button } from "@/components/UI/Button";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "mantine-react-table/styles.css";
+import { ActionIcon } from "@/components/UI/ActionIcon";
 
 type TableVariant = "basic" | "basic-cursor";
 
@@ -38,25 +44,14 @@ type SortableColumn = {
   desc: boolean;
 };
 
-type ActionProps = {
-  label?: string;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
-};
-
-type ToolbarAction = {
-  actionProps: ActionProps;
-  onClick: () => void;
-  disabled?: boolean;
-};
-
 type ExportConfig<T> = {
   enabled: boolean;
-  label?: string;
-  actionProps?: ActionProps;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
   handleExportRows?: (rows: T[], type: "page" | "selected") => void;
   handleExportAll?: (data: T[]) => void;
-  filenameWithoutExtension: string;
+  filename: string;
+  wrapper?: (buttons: ReactNode) => ReactNode;
 };
 
 export type ColumnDefinition<T> = {
@@ -105,14 +100,13 @@ export interface CustomTableProps<T extends Record<string, any>> {
     left: string[];
     right: string[];
   };
-  topToolbarActions?: ToolbarAction[];
+  topToolbarActions?: ReactNode[];
   exportCSV?: ExportConfig<T>;
   exportPDF?: ExportConfig<T>;
 }
 
 function mapColumns<T extends Record<string, any>>(
   cols: ColumnDefinition<T>[],
-  defaultFilterTypes?: FilterType[],
 ): MRT_ColumnDef<T>[] {
   return cols.map((col) => {
     const filterTypes = col.filterType ?? defaultFilterTypes;
@@ -153,17 +147,16 @@ const defaultFilterTypes: FilterType[] = [
   "notEmpty",
 ];
 
-const defaultExportFilename = "table-export";
-
 export default function CustomTable<T extends Record<string, any>>({
   variant = "basic",
   columns,
   data,
   isLoading,
+  enableClickToCopy,
   sortBy,
   pagination,
   globalFilter,
-  columnFilter = { filterTypes: defaultFilterTypes },
+  columnFilter,
   columnPinning,
   topToolbarActions,
   exportCSV,
@@ -179,10 +172,10 @@ export default function CustomTable<T extends Record<string, any>>({
     exportPDF?.enabled
   );
 
-  const csvIcon = exportCSV?.actionProps?.leftIcon ?? <IconDownload size={16} />;
-  const csvLabel = exportCSV?.label ?? "CSV";
-  const pdfIcon = exportPDF?.actionProps?.leftIcon ?? <IconDownload size={16} />;
-  const pdfLabel = exportPDF?.label ?? "PDF";
+  const csvLeftIcon = exportCSV?.leftIcon ?? <IconCsv size={16} />;
+  const csvRightIcon = exportCSV?.rightIcon;
+  const pdfLeftIcon = exportPDF?.leftIcon ?? <IconPdf size={16} />;
+  const pdfRightIcon = exportPDF?.rightIcon;
 
   const pageSizeOptions = pagination?.pageSizeOptions ?? [10, 25, 50, 100];
 
@@ -197,7 +190,7 @@ export default function CustomTable<T extends Record<string, any>>({
             fieldSeparator: ",",
             decimalSeparator: ".",
             useKeysAsHeaders: true,
-            filename: `${exportCSV.filenameWithoutExtension}.csv`,
+            filename: `${exportCSV.filename}`,
           })
         : null,
     [exportCSV?.enabled],
@@ -214,13 +207,11 @@ export default function CustomTable<T extends Record<string, any>>({
     const headers = columns.map((c) => c.header);
     const rowData = rows.map((row) => Object.values(row));
     autoTable(doc, { head: [headers], body: rowData });
-    doc.save(
-      `${exportPDF?.filenameWithoutExtension || defaultExportFilename}.pdf`,
-    );
+    doc.save(`${exportPDF?.filename}`);
   };
 
   const mappedColumns = useMemo(
-    () => mapColumns(columns, columnFilter?.filterTypes),
+    () => mapColumns(columns),
     [columns, columnFilter?.filterTypes],
   );
 
@@ -231,7 +222,6 @@ export default function CustomTable<T extends Record<string, any>>({
 
     state: {
       isLoading: isLoading ?? false,
-      ...(sortBy && { sorting: sortBy }),
       ...(pagination && {
         pagination: {
           pageIndex: pagination.pageIndex,
@@ -256,6 +246,7 @@ export default function CustomTable<T extends Record<string, any>>({
     enableColumnFilterModes: hasColumnFilter,
     enableColumnPinning: !!columnPinning,
     enableGlobalFilter: !!globalFilter,
+    enableClickToCopy,
 
     ...(globalFilter && {
       mantineSearchTextInputProps: {
@@ -297,96 +288,111 @@ export default function CustomTable<T extends Record<string, any>>({
 
           return (
             <Flex gap="xs" align="center" wrap="wrap">
-              {topToolbarActions?.map((action, i) => (
-                <Button
-                  key={i}
-                  variant="primary"
-                  leftIcon={action.actionProps.leftIcon}
-                  rightIcon={action.actionProps.rightIcon}
-                  disabled={action.disabled}
-                  onClick={action.onClick}
-                >
-                  {action.actionProps.label}
-                </Button>
+              {topToolbarActions?.map((node, i) => (
+                <Fragment key={i}>{node}</Fragment>
               ))}
 
-              {exportCSV?.enabled && (
-                <>
-                  <Button
-                    variant="light"
-                    leftIcon={csvIcon}
-                    onClick={() =>
-                      exportCSV.handleExportAll
-                        ? exportCSV.handleExportAll(data)
-                        : defaultCSVExport(data)
-                    }
-                  >
-                    Export All ({csvLabel})
-                  </Button>
-                  <Button
-                    variant="light"
-                    leftIcon={csvIcon}
-                    onClick={() =>
-                      exportCSV.handleExportRows
-                        ? exportCSV.handleExportRows(pageRows, "page")
-                        : defaultCSVExport(pageRows)
-                    }
-                  >
-                    Export Page ({csvLabel})
-                  </Button>
-                  <Button
-                    variant="light"
-                    leftIcon={csvIcon}
-                    disabled={selectedRows.length === 0}
-                    onClick={() =>
-                      exportCSV.handleExportRows
-                        ? exportCSV.handleExportRows(selectedRows, "selected")
-                        : defaultCSVExport(selectedRows)
-                    }
-                  >
-                    Export Selected ({csvLabel})
-                  </Button>
-                </>
-              )}
+              {exportCSV?.enabled &&
+                (() => {
+                  const csvButtons = (
+                    <>
+                      <Button
+                        variant="light"
+                        leftIcon={csvLeftIcon}
+                        rightIcon={csvRightIcon}
+                        onClick={() =>
+                          exportCSV.handleExportAll
+                            ? exportCSV.handleExportAll(data)
+                            : defaultCSVExport(data)
+                        }
+                      >
+                        Export All
+                      </Button>
+                      <Button
+                        variant="light"
+                        leftIcon={csvLeftIcon}
+                        rightIcon={csvRightIcon}
+                        onClick={() =>
+                          exportCSV.handleExportRows
+                            ? exportCSV.handleExportRows(pageRows, "page")
+                            : defaultCSVExport(pageRows)
+                        }
+                      >
+                        Export Page
+                      </Button>
+                      <Button
+                        variant="light"
+                        leftIcon={csvLeftIcon}
+                        rightIcon={csvRightIcon}
+                        disabled={selectedRows.length === 0}
+                        onClick={() =>
+                          exportCSV.handleExportRows
+                            ? exportCSV.handleExportRows(
+                                selectedRows,
+                                "selected",
+                              )
+                            : defaultCSVExport(selectedRows)
+                        }
+                      >
+                        Export Selected
+                      </Button>
+                    </>
+                  );
+                  return exportCSV.wrapper
+                    ? exportCSV.wrapper(csvButtons)
+                    : csvButtons;
+                })()}
 
-              {exportPDF?.enabled && (
-                <>
-                  <Button
-                    variant="light"
-                    leftIcon={pdfIcon}
-                    onClick={() =>
-                      exportPDF.handleExportAll
-                        ? exportPDF.handleExportAll(data)
-                        : defaultPDFExport(data)
-                    }
-                  >
-                    Export All ({pdfLabel})
-                  </Button>
-                  <Button
-                    variant="light"
-                    leftIcon={pdfIcon}
-                    onClick={() =>
-                      exportPDF.handleExportRows
-                        ? exportPDF.handleExportRows(pageRows, "page")
-                        : defaultPDFExport(pageRows)
-                    }
-                  >
-                    Export Page ({pdfLabel})
-                  </Button>
-                  <Button
-                    variant="light"
-                    leftIcon={pdfIcon}
-                    disabled={selectedRows.length === 0}
-                    onClick={() =>
-                      exportPDF.handleExportRows
-                        ? exportPDF.handleExportRows(selectedRows, "selected")
-                        : defaultPDFExport(selectedRows)
-                    }
-                  >
-                    Export Selected ({pdfLabel})
-                  </Button>
-                </>
-              )}
+              {exportPDF?.enabled &&
+                (() => {
+                  const pdfButtons = (
+                    <>
+                      <Button
+                        variant="light"
+                        leftIcon={pdfLeftIcon}
+                        rightIcon={pdfRightIcon}
+                        onClick={() =>
+                          exportPDF.handleExportAll
+                            ? exportPDF.handleExportAll(data)
+                            : defaultPDFExport(data)
+                        }
+                      >
+                        Export All
+                      </Button>
+                      <Button
+                        variant="light"
+                        leftIcon={pdfLeftIcon}
+                        rightIcon={pdfRightIcon}
+                        onClick={() =>
+                          exportPDF.handleExportRows
+                            ? exportPDF.handleExportRows(pageRows, "page")
+                            : defaultPDFExport(pageRows)
+                        }
+                      >
+                        Export Page
+                      </Button>
+                      <Button
+                        variant="light"
+                        leftIcon={pdfLeftIcon}
+                        rightIcon={pdfRightIcon}
+                        disabled={selectedRows.length === 0}
+                        onClick={() =>
+                          exportPDF.handleExportRows
+                            ? exportPDF.handleExportRows(
+                                selectedRows,
+                                "selected",
+                              )
+                            : defaultPDFExport(selectedRows)
+                        }
+                      >
+                        Export Selected
+                      </Button>
+                    </>
+                  );
+                  return exportPDF.wrapper
+                    ? exportPDF.wrapper(pdfButtons)
+                    : pdfButtons;
+                })()}
             </Flex>
           );
         }
@@ -399,16 +405,24 @@ export default function CustomTable<T extends Record<string, any>>({
             <Select
               size="sm"
               w={120}
-              data={pageSizeOptions.map((n) => ({ value: String(n), label: `${n} rows` }))}
+              data={pageSizeOptions.map((n) => ({
+                value: String(n),
+                label: `${n}`,
+              }))}
               value={String(pagination.pageSize)}
               onChange={(val) => {
                 if (!val) return;
                 const newSize = Number(val);
                 setCursorHistory([]);
-                pagination.onPageChange(0, newSize, pagination.hasNext ?? false, undefined);
+                pagination.onPageChange(
+                  0,
+                  newSize,
+                  pagination.hasNext ?? false,
+                  undefined,
+                );
               }}
             />
-            <Button
+            <ActionIcon
               variant="light"
               disabled={pagination.pageIndex === 0}
               onClick={() => {
@@ -422,9 +436,9 @@ export default function CustomTable<T extends Record<string, any>>({
                 );
               }}
             >
-              Previous
-            </Button>
-            <Button
+              <IconChevronLeft size={16} />
+            </ActionIcon>
+            <ActionIcon
               variant="light"
               disabled={!pagination.hasNext}
               onClick={() => {
@@ -438,8 +452,8 @@ export default function CustomTable<T extends Record<string, any>>({
                 );
               }}
             >
-              Next
-            </Button>
+              <IconChevronRight size={16} />
+            </ActionIcon>
           </Flex>
         ),
       }),

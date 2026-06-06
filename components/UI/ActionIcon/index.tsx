@@ -4,7 +4,7 @@ type IconVariant = 'primary' | 'secondary' | 'light' | 'ghost' | 'success' | 'wa
 type IconSize = 'sm' | 'md' | 'lg';
 
 interface Props {
-  'aria-label': string;
+  'aria-label'?: string;
   variant?: IconVariant;
   size?: IconSize;
   disabled?: boolean;

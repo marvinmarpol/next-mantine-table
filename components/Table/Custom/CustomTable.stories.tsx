@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { fn } from "storybook/test";
 import { useState } from "react";
-import { Badge } from "@mantine/core";
+import { Badge, Flex } from "@mantine/core";
 import { IconPlus, IconRefresh, IconUpload } from "@tabler/icons-react";
 import CustomTable, { type ColumnDefinition } from "./index";
+import { Button } from "@/components/UI/Button";
 import { data as employeeData, type Employee } from "../advanced/makeData";
+import { ActionIcon } from "@/components/UI/ActionIcon";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -198,35 +200,59 @@ export const WithCursorPagination: Story = {
 };
 
 export const WithToolbarActions: Story = {
-  args: {
-    columns: basicColumns,
-    data: employeeData.slice(0, 10),
-    topToolbarActions: [
-      {
-        actionProps: {
-          label: "Add Employee",
-          leftIcon: <IconPlus size={16} />,
-        },
-        onClick: fn(),
-      },
-      {
-        actionProps: { label: "Upload", leftIcon: <IconUpload size={16} /> },
-        onClick: fn(),
-      },
-      {
-        actionProps: { label: "Refresh", leftIcon: <IconRefresh size={16} /> },
-        onClick: fn(),
-        disabled: true,
-      },
-    ],
-  },
+  render: () => (
+    <EmployeeTable
+      columns={basicColumns}
+      data={employeeData.slice(0, 10)}
+      topToolbarActions={[
+        <Flex
+          key="add"
+          p={4}
+          style={{ border: "1px dashed gray", borderRadius: 4 }}
+        >
+          <Button
+            variant="success"
+            leftIcon={<IconPlus size={16} />}
+            onClick={fn()}
+          >
+            Add Employee
+          </Button>
+        </Flex>,
+        <Button key="upload" variant="success" onClick={fn()}>
+          <IconUpload size={16} />
+        </Button>,
+        <Button
+          key="refresh"
+          variant="success"
+          leftIcon={<IconRefresh size={16} />}
+          disabled
+          onClick={fn()}
+        >
+          Refresh
+        </Button>,
+      ]}
+    />
+  ),
 };
 
 export const WithCSVExport: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportCSV: { enabled: true, filenameWithoutExtension: "employee-report" },
+    exportCSV: {
+      enabled: true,
+      filename: "employee-report",
+      leftIcon: <IconPlus size={16} />,
+      wrapper: (btns) => (
+        <Flex
+          p={4}
+          gap="xs"
+          style={{ border: "1px dashed gray", borderRadius: 4 }}
+        >
+          {btns}
+        </Flex>
+      ),
+    },
   },
 };
 
@@ -234,7 +260,7 @@ export const WithPDFExport: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportPDF: { enabled: true, filenameWithoutExtension: "employee-report" },
+    exportPDF: { enabled: true, filename: "employee-report" },
   },
 };
 
@@ -242,8 +268,19 @@ export const WithBothExports: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    exportCSV: { enabled: true, filenameWithoutExtension: "employee-report" },
-    exportPDF: { enabled: true, filenameWithoutExtension: "employee-report" },
+    exportCSV: {
+      enabled: true,
+      filename: "employee-report.csv",
+      wrapper: (btns) => (
+        <Flex
+          gap="xs"
+          w="100%"
+        >
+          {btns}
+        </Flex>
+      ),
+    },
+    exportPDF: { enabled: true, filename: "employee-report.pdf" },
   },
 };
 
@@ -291,20 +328,17 @@ export const AllFeatures: Story = {
         columnFilter={{ filterTypes: ["contains"] }}
         columnPinning={{ left: ["firstName"], right: [] }}
         topToolbarActions={[
-          {
-            actionProps: {
-              label: "Add Employee",
-              leftIcon: <IconPlus size={16} />,
-            },
-            onClick: fn(),
-          },
-          {
-            actionProps: {
-              label: "Refresh",
-              leftIcon: <IconRefresh size={16} />,
-            },
-            onClick: fn(),
-          },
+          <ActionIcon key="add" variant="success" size="lg" onClick={fn()}>
+            <IconPlus size={16} />
+          </ActionIcon>,
+          <Button
+            key="refresh"
+            variant="success"
+            leftIcon={<IconRefresh size={16} />}
+            onClick={fn()}
+          >
+            Refresh
+          </Button>,
         ]}
       />
     );
