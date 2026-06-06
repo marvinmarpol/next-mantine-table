@@ -4,12 +4,14 @@ import { Fragment, ReactNode, useMemo, useState } from "react";
 import {
   MantineReactTable,
   MRT_SortingState,
+  MRT_TablePagination,
+  MRT_ToolbarAlertBanner,
   useMantineReactTable,
   type MRT_ColumnDef,
   type MRT_FilterOption,
   type MRT_TableOptions,
 } from "mantine-react-table";
-import { Flex, MantineColor, Select, Text, TextInput } from "@mantine/core";
+import { Box, Flex, MantineColor, Portal, Select, Text, TextInput } from "@mantine/core";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -111,6 +113,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
     rowCount: number;
     nextCursor?: string | number;
     hasNext?: boolean;
+    showPageNumber?: boolean;
     pageSizeOptions?: number[];
     onPageChange: (
       pageIndex: number,
@@ -236,6 +239,8 @@ export default function CustomTable<T extends Record<string, any>>({
     Record<string, string>
   >({});
 
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
   const csvConfig = useMemo(
     () =>
       exportCSV?.enabled
@@ -252,13 +257,20 @@ export default function CustomTable<T extends Record<string, any>>({
   const resolvePath = (obj: any, path: string): unknown =>
     path.split(".").reduce((acc, key) => acc?.[key], obj);
 
-  const isPrimitive = (v: unknown): v is string | number | boolean | null | undefined =>
-    v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+  const isPrimitive = (
+    v: unknown,
+  ): v is string | number | boolean | null | undefined =>
+    v === null ||
+    v === undefined ||
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean";
 
   const defaultCSVExport = (rows: T[]) => {
     if (!csvConfig) return;
     const flatRows = rows.map((row) => {
-      const out: Record<string, string | number | boolean | null | undefined> = {};
+      const out: Record<string, string | number | boolean | null | undefined> =
+        {};
       columns.forEach((col) => {
         const value = resolvePath(row, col.accessorKey);
         out[col.header] = isPrimitive(value) ? value : undefined;
@@ -455,9 +467,11 @@ export default function CustomTable<T extends Record<string, any>>({
           <IconChevronRight size={24} />
         </ActionIcon>
       </Flex>
-      <Text size="sm" px={5} c={"dimmed"}>
-        Page {pagination.pageIndex + 1}
-      </Text>
+      {pagination.showPageNumber && (
+        <Text size="sm" mx={5} c={"dimmed"}>
+          Page {pagination.pageIndex + 1}
+        </Text>
+      )}
     </Flex>
   );
 
@@ -468,6 +482,7 @@ export default function CustomTable<T extends Record<string, any>>({
 
     state: {
       sorting,
+      isFullScreen,
       showAlertBanner: error?.isError ?? false,
       showProgressBars: isLoading,
       isLoading: isLoading ?? false,
@@ -501,6 +516,7 @@ export default function CustomTable<T extends Record<string, any>>({
     enableColumnFilterModes: hasColumnFilter,
     enableColumnPinning: !!columnPinning,
     enableGlobalFilter: !!globalFilter,
+    paginationDisplayMode: "pages",
 
     renderEmptyRowsFallback: () =>
       noDataFallback ?? (
@@ -512,7 +528,7 @@ export default function CustomTable<T extends Record<string, any>>({
     ...(error && {
       mantineToolbarAlertBannerProps: {
         children: error.children,
-        color: error.color ?? "error",
+        color: error.color ?? "red",
       },
     }),
 
@@ -619,17 +635,24 @@ export default function CustomTable<T extends Record<string, any>>({
       enableBottomToolbar: false,
     }),
 
+    onIsFullScreenChange: (updater: any) => {
+      const next =
+        typeof updater === "function" ? updater(isFullScreen) : updater;
+      setIsFullScreen(next);
+    },
+
     ...(isCursorPagination &&
       variant !== "headless" &&
       pagination && {
-        renderBottomToolbar: () => (
-          <Flex gap="xs" align="center" justify="flex-end" p="xs">
-            {bottomToolbarActions?.map((node, i) => (
-              <Fragment key={i}>{node}</Fragment>
-            ))}
-            {cursorNav}
-          </Flex>
-        ),
+        renderBottomToolbar: () =>
+          isFullScreen ? null : (
+            <Flex gap="xs" align="center" justify="flex-end" p="xs">
+              {bottomToolbarActions?.map((node, i) => (
+                <Fragment key={i}>{node}</Fragment>
+              ))}
+              {cursorNav}
+            </Flex>
+          ),
       }),
   };
 
@@ -638,7 +661,7 @@ export default function CustomTable<T extends Record<string, any>>({
   if (variant === "headless") {
     const headlessHasTopContent = hasToolbarContent || !!globalFilter;
     const headlessHasBottomContent =
-      isCursorPagination || !!bottomToolbarActions?.length;
+      !!pagination || !!bottomToolbarActions?.length;
     const selectedRows = table
       .getSelectedRowModel()
       .rows.map((r) => r.original as T);
@@ -664,6 +687,7 @@ export default function CustomTable<T extends Record<string, any>>({
             {renderExportButtons(selectedRows, pageRows)}
             {globalFilter && (
               <TextInput
+                ml="auto"
                 value={table.getState().globalFilter ?? ""}
                 placeholder={
                   globalFilter.filterPlaceholder ?? defaultSearchPlaceholder
@@ -673,12 +697,18 @@ export default function CustomTable<T extends Record<string, any>>({
             )}
           </Flex>
         )}
+        {error?.isError && (
+          <MRT_ToolbarAlertBanner stackAlertBanner table={table} />
+        )}
         <MantineReactTable table={table} />
         {headlessHasBottomContent && (
           <Flex gap="xs" align="center" justify="flex-end" p="xs">
             {bottomToolbarActions?.map((node, i) => (
               <Fragment key={i}>{node}</Fragment>
             ))}
+            {pagination && !isCursorPagination && (
+              <MRT_TablePagination table={table} />
+            )}
             {cursorNav}
           </Flex>
         )}
@@ -686,5 +716,32 @@ export default function CustomTable<T extends Record<string, any>>({
     );
   }
 
-  return <MantineReactTable table={table} />;
+  return (
+    <>
+      <MantineReactTable table={table} />
+      {isFullScreen && isCursorPagination && (
+        <Portal>
+          <Box
+            pos="fixed"
+            bottom={0}
+            left={0}
+            right={0}
+            p="xs"
+            bg="var(--mantine-color-body)"
+            style={{
+              zIndex: 201,
+              borderTop: "1px solid var(--mantine-color-default-border)",
+            }}
+          >
+            <Flex gap="xs" align="center" justify="flex-end">
+              {bottomToolbarActions?.map((node, i) => (
+                <Fragment key={i}>{node}</Fragment>
+              ))}
+              {cursorNav}
+            </Flex>
+          </Box>
+        </Portal>
+      )}
+    </>
+  );
 }

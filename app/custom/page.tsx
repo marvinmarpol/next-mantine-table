@@ -196,9 +196,9 @@ export default function Page() {
   return (
     <>
       <MantineProvider>
-        <div className="p-8">
+        <div className="p-20">
           <CustomTable
-            variant="headless"
+            variant="basic"
             columns={columns}
             data={data}
             refresh={{fn: ()=>{alert('refresh')}, customIcon: <Icon2fa size={24}/>}}
@@ -209,6 +209,19 @@ export default function Page() {
             }}
             globalFilter={{
               //onGlobalFilterChange: (value)=>{console.log(value)}
+            }}
+            pagination={{
+              pageIndex: 0,
+              pageSize: 10,
+              rowCount: data.length,
+              showPageNumber: true,
+              nextCursor: 0,
+              hasNext: true,
+              onPageChange: (newPageIndex, newPageSize) =>{console.log(newPageIndex, newPageSize)}
+            }}
+            error={{
+              isError: true,
+              children: "test",
             }}
             /* pagination={{
               pageIndex: 0,

@@ -50,7 +50,7 @@ const HeadlessTable = () => {
     mantinePaginationProps: {
       rowsPerPageOptions: ['5', '10', '15'],
     },
-    paginationDisplayMode: 'pages',
+    paginationDisplayMode: 'default',
   });
 
   return (
