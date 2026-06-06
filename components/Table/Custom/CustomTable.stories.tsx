@@ -106,7 +106,7 @@ export const WithSorting: Story = {
   args: {
     columns: basicColumns,
     data: employeeData,
-    sortBy: [{ id: "salary", desc: true }],
+    sort: { sortBy: [{ id: "salary", desc: true }] },
   },
 };
 
@@ -284,7 +284,7 @@ export const WithCustomCell: Story = {
   args: {
     columns: customCellColumns,
     data: employeeData,
-    sortBy: [{ id: "salary", desc: true }],
+    sort: { sortBy: [{ id: "salary", desc: true }] },
     globalFilter: {
       filterPlaceholder: "Search employees...",
       keyColumns: ["firstName"],
@@ -311,7 +311,7 @@ export const AllFeatures: Story = {
       <EmployeeTable
         columns={filterableColumns}
         data={employeeData.slice(start, start + PAGE_SIZE)}
-        sortBy={[{ id: "firstName", desc: false }]}
+        sort={{ sortBy: [{ id: "firstName", desc: false }] }}
         pagination={{
           pageIndex,
           pageSize: PAGE_SIZE,

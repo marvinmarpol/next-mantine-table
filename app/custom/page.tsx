@@ -7,7 +7,7 @@ import GenericTable from "@/components/Table/generic";
 import CustomTable, { ColumnDefinition } from "@/components/Table/Custom";
 import { Badge } from "@/components/UI/Badge";
 import { ActionIcon } from "@/components/UI/ActionIcon";
-import { Icon123, IconEraser, IconTrash } from "@tabler/icons-react";
+import { Icon123, Icon12Hours, Icon2fa, IconEraser, IconRefresh, IconTrash } from "@tabler/icons-react";
 
 export default function Page() {
   type Person = {
@@ -201,9 +201,12 @@ export default function Page() {
             variant="headless"
             columns={columns}
             data={data}
-            refresh={{fn: ()=>{alert('refresh')}}}
+            refresh={{fn: ()=>{alert('refresh')}, customIcon: <Icon2fa size={24}/>}}
             reset={{fn: ()=>{alert('reset')}}}
-            sortBy={[{ id: "name.firstName", desc: false }, { id: "address", desc: true }]}
+            sort={{ sortBy: [{ id: "name.firstName", desc: false }, { id: "address", desc: true }] }}
+            exportCSV={{
+              enabled: true,
+            }}
             globalFilter={{
               //onGlobalFilterChange: (value)=>{console.log(value)}
             }}

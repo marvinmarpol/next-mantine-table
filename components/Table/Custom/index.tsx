@@ -83,18 +83,18 @@ export interface CustomTableProps<T extends Record<string, any>> {
   columns: ColumnDefinition<T>[];
   data: T[];
   isLoading?: boolean;
-  sort: {
+  sort?: {
     sortBy?: SortableColumn[];
     onSortingChange?: (sorting: SortableColumn[]) => void;
   };
   noDataFallback?: ReactNode;
   reset?: {
     fn: () => void;
-    children?: ReactNode;
+    customIcon?: ReactNode;
   };
   refresh?: {
     fn: () => void;
-    children?: ReactNode;
+    customIcon?: ReactNode;
   };
   detailPanel?: {
     render: (row: T) => ReactNode;
@@ -221,7 +221,7 @@ export default function CustomTable<T extends Record<string, any>>({
   const pageSizeOptions = pagination?.pageSizeOptions ?? [5, 10, 25, 50, 100];
 
   const [sorting, setSorting] = useState<MRT_SortingState>(
-    (sort.sortBy as MRT_SortingState) ?? [],
+    (sort?.sortBy as MRT_SortingState) ?? [],
   );
 
   const [cursorHistory, setCursorHistory] = useState<
@@ -249,16 +249,35 @@ export default function CustomTable<T extends Record<string, any>>({
     [exportCSV?.enabled],
   );
 
+  const resolvePath = (obj: any, path: string): unknown =>
+    path.split(".").reduce((acc, key) => acc?.[key], obj);
+
+  const isPrimitive = (v: unknown): v is string | number | boolean | null | undefined =>
+    v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+
   const defaultCSVExport = (rows: T[]) => {
     if (!csvConfig) return;
-    const csv = generateCsv(csvConfig)(rows as any);
+    const flatRows = rows.map((row) => {
+      const out: Record<string, string | number | boolean | null | undefined> = {};
+      columns.forEach((col) => {
+        const value = resolvePath(row, col.accessorKey);
+        out[col.header] = isPrimitive(value) ? value : undefined;
+      });
+      return out;
+    });
+    const csv = generateCsv(csvConfig)(flatRows as any);
     download(csvConfig)(csv);
   };
 
   const defaultPDFExport = (rows: T[]) => {
     const doc = new jsPDF();
     const headers = columns.map((c) => c.header);
-    const rowData = rows.map((row) => Object.values(row));
+    const rowData = rows.map((row) =>
+      columns.map((col) => {
+        const value = resolvePath(row, col.accessorKey);
+        return isPrimitive(value) ? String(value ?? "") : "";
+      }),
+    );
     autoTable(doc, { head: [headers], body: rowData });
     doc.save(pdfFilename.replaceAll(".pdf", ""));
   };
@@ -474,9 +493,9 @@ export default function CustomTable<T extends Record<string, any>>({
       }),
     },
 
-    manualSorting: !!sort.onSortingChange,
+    manualSorting: !!sort?.onSortingChange,
     manualFiltering: !!columnFilter?.onFiltersChange,
-    enableSorting: !!sort.sortBy,
+    enableSorting: !!sort?.sortBy,
     enableRowSelection: hasExport,
     enableColumnFilters: hasColumnFilter,
     enableColumnFilterModes: hasColumnFilter,
@@ -517,11 +536,11 @@ export default function CustomTable<T extends Record<string, any>>({
       }),
     }),
 
-    ...(sort.sortBy && {
+    ...(sort?.sortBy && {
       onSortingChange: (updater: any) => {
         const next = typeof updater === "function" ? updater(sorting) : updater;
         setSorting(next);
-        sort.onSortingChange?.(next as SortableColumn[]);
+        sort?.onSortingChange?.(next as SortableColumn[]);
       },
     }),
 
@@ -581,12 +600,12 @@ export default function CustomTable<T extends Record<string, any>>({
                 ))}
                 {reset && (
                   <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                    {reset.children ?? <IconEraser size={16} />}
+                    {reset.customIcon ?? <IconEraser size={16} />}
                   </ActionIcon>
                 )}
                 {refresh && (
                   <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                    {refresh.children ?? <IconRefresh size={16} />}
+                    {refresh.customIcon ?? <IconRefresh size={16} />}
                   </ActionIcon>
                 )}
                 {renderExportButtons(selectedRows, pageRows)}
@@ -634,12 +653,12 @@ export default function CustomTable<T extends Record<string, any>>({
             ))}
             {reset && (
               <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                {reset.children ?? <IconEraser size={16} />}
+                {reset.customIcon ?? <IconEraser size={16} />}
               </ActionIcon>
             )}
             {refresh && (
               <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                {refresh.children ?? <IconRefresh size={16} />}
+                {refresh.customIcon ?? <IconRefresh size={16} />}
               </ActionIcon>
             )}
             {renderExportButtons(selectedRows, pageRows)}
