@@ -216,7 +216,7 @@ export default function Page() {
       <MantineProvider>
         <div className="p-20">
           <CustomTable
-            variant="basic"
+            variant="headless"
             columns={columns}
             data={result?.data ?? []}
             isLoading={isLoading}
@@ -224,8 +224,8 @@ export default function Page() {
               pageIndex: 0,
               pageSize: 5,
               rowCount: result?.data.length ?? 0,
-              hasNext: true,
-              nextCursor: 0,
+              /* hasNext: true,
+              nextCursor: 0, */
               showPageNumber: true,
               onPageChange: () => {},
             }}

@@ -280,7 +280,7 @@ export default function CustomTable<T extends Record<string, any>>({
             filename: csvFilename.replaceAll(".csv", ""),
           })
         : null,
-    [exportCSV?.enabled],
+    [exportCSV?.enabled, csvFilename],
   );
 
   const resolvePath = (obj: any, path: string): unknown =>
@@ -569,8 +569,10 @@ export default function CustomTable<T extends Record<string, any>>({
 
     renderEmptyRowsFallback: () =>
       noDataFallback ?? (
-        <div className="flex p-8 text-center text-[16px] text-gray-600">
-          No data to display
+        <div style={{ padding: 32, textAlign: "center" }}>
+          <strong>No data to display.</strong>
+          <br />
+          Try adjusting your filters.
         </div>
       ),
 
@@ -589,7 +591,12 @@ export default function CustomTable<T extends Record<string, any>>({
         enableExpandAll: false,
         mantineExpandButtonProps: ({ row }) =>
           !row.getCanExpand()
-            ? { style: { visibility: "hidden" as const, pointerEvents: "none" as const } }
+            ? {
+                style: {
+                  visibility: "hidden" as const,
+                  pointerEvents: "none" as const,
+                },
+              }
             : {},
       }),
     }),
@@ -668,16 +675,22 @@ export default function CustomTable<T extends Record<string, any>>({
                 {topToolbarActions?.map((node, i) => (
                   <Fragment key={i}>{node}</Fragment>
                 ))}
-                {reset && (
-                  <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                    {reset.customIcon ?? <IconEraser />}
-                  </ActionIcon>
-                )}
-                {refresh && (
-                  <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                    {refresh.customIcon ?? <IconRefresh />}
-                  </ActionIcon>
-                )}
+                {reset &&
+                  (reset.customIcon ?? (
+                    <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
+                      <IconEraser />
+                    </ActionIcon>
+                  ))}
+                {refresh &&
+                  (refresh.customIcon ?? (
+                    <ActionIcon
+                      variant="neutral"
+                      size="lg"
+                      onClick={refresh.fn}
+                    >
+                      <IconRefresh />
+                    </ActionIcon>
+                  ))}
                 {renderExportButtons(selectedRows, pageRows)}
               </Flex>
             );
@@ -695,16 +708,18 @@ export default function CustomTable<T extends Record<string, any>>({
       setIsFullScreen(next);
     },
 
-    ...(isCursorPagination &&
-      variant !== "headless" &&
-      pagination && {
-        renderBottomToolbar: () =>
-          isFullScreen ? null : (
+    ...(variant !== "headless" &&
+      (isCursorPagination || !!bottomToolbarActions?.length) && {
+        renderBottomToolbar: ({ table }) =>
+          isFullScreen && isCursorPagination ? null : (
             <Flex gap="xs" align="center" justify="flex-end" p="xs">
               {bottomToolbarActions?.map((node, i) => (
                 <Fragment key={i}>{node}</Fragment>
               ))}
-              {cursorNav}
+              {isCursorPagination && cursorNav}
+              {!isCursorPagination && pagination && (
+                <MRT_TablePagination table={table} />
+              )}
             </Flex>
           ),
       }),
@@ -738,16 +753,18 @@ export default function CustomTable<T extends Record<string, any>>({
             {topToolbarActions?.map((node, i) => (
               <Fragment key={i}>{node}</Fragment>
             ))}
-            {reset && (
-              <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                {reset.customIcon ?? <IconEraser />}
-              </ActionIcon>
-            )}
-            {refresh && (
-              <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                {refresh.customIcon ?? <IconRefresh />}
-              </ActionIcon>
-            )}
+            {reset &&
+              (reset.customIcon ?? (
+                <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
+                  <IconEraser />
+                </ActionIcon>
+              ))}
+            {refresh &&
+              (refresh.customIcon ?? (
+                <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
+                  <IconRefresh />
+                </ActionIcon>
+              ))}
             {renderExportButtons(selectedRows, pageRows)}
             {globalFilter && globalFilter.position !== "left" && (
               <TextInput

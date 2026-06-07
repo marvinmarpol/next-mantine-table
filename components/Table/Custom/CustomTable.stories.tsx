@@ -360,3 +360,229 @@ export const AllVariants = {
     </>
   ),
 };
+
+export const WithResetRefresh: Story = {
+  args: {
+    columns: basicColumns,
+    data: employeeData.slice(0, 10),
+    reset: { fn: fn() },
+    refresh: { fn: fn() },
+  },
+};
+
+export const WithCustomIcon: Story = {
+  render: () => (
+    <EmployeeTable
+      columns={basicColumns}
+      data={employeeData.slice(0, 10)}
+      reset={{
+        fn: fn(),
+        customIcon: (
+          <Button variant="neutral" onClick={fn()}>
+            Clear
+          </Button>
+        ),
+      }}
+      refresh={{
+        fn: fn(),
+        customIcon: (
+          <Button variant="success" leftIcon={<IconRefresh size={16} />} onClick={fn()}>
+            Reload
+          </Button>
+        ),
+      }}
+    />
+  ),
+};
+
+export const WithDetailPanel: Story = {
+  render: () => (
+    <EmployeeTable
+      columns={basicColumns}
+      data={employeeData.slice(0, 10)}
+      detailPanel={{
+        render: (row) => (
+          <div style={{ padding: 16 }}>
+            <strong>Email:</strong> {row.email}
+            <br />
+            <strong>Job Title:</strong> {row.jobTitle}
+            <br />
+            <strong>Salary:</strong> ${row.salary.toLocaleString()}
+          </div>
+        ),
+        canExpand: (row) => row.salary >= 60_000,
+      }}
+    />
+  ),
+};
+
+export const WithError: Story = {
+  args: {
+    columns: basicColumns,
+    data: [],
+    error: {
+      isError: true,
+      children: "Failed to load employee data. Please try again.",
+      color: "red",
+    },
+  },
+};
+
+export const WithNoDataFallback: Story = {
+  args: {
+    columns: basicColumns,
+    data: [],
+    noDataFallback: (
+      <div style={{ padding: 32, textAlign: "center", color: "#888" }}>
+        <strong>No employees found.</strong>
+        <br />
+        Try adjusting your filters.
+      </div>
+    ),
+  },
+};
+
+export const WithBottomToolbarActions: Story = {
+  render: () => {
+    const [pageSize, setPageSize] = useState(5);
+    const [pageIndex, setPageIndex] = useState(0);
+    const start = pageIndex * pageSize;
+
+    return (
+      <EmployeeTable
+        columns={basicColumns}
+        data={employeeData.slice(start, start + pageSize)}
+        pagination={{
+          pageIndex,
+          pageSize,
+          rowCount: employeeData.length,
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
+        }}
+        bottomToolbarActions={[
+          <Button key="action" variant="neutral" onClick={fn()}>
+            Bulk Action
+          </Button>,
+        ]}
+      />
+    );
+  },
+};
+
+export const WithHeadlessPagination: Story = {
+  render: () => {
+    const [pageSize, setPageSize] = useState(5);
+    const [pageIndex, setPageIndex] = useState(0);
+    const start = pageIndex * pageSize;
+
+    return (
+      <EmployeeTable
+        variant="headless"
+        columns={basicColumns}
+        data={employeeData.slice(start, start + pageSize)}
+        pagination={{
+          pageIndex,
+          pageSize,
+          rowCount: employeeData.length,
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
+        }}
+      />
+    );
+  },
+};
+
+export const WithHeadlessCursorPagination: Story = {
+  render: () => {
+    const [pageIndex, setPageIndex] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    const start = pageIndex * pageSize;
+    const pageData = employeeData.slice(start, start + pageSize);
+    const hasNext = start + pageSize < employeeData.length;
+    const nextCursor = hasNext ? `cursor_page_${pageIndex + 1}` : undefined;
+
+    return (
+      <EmployeeTable
+        variant="headless"
+        columns={basicColumns}
+        data={pageData}
+        pagination={{
+          pageIndex,
+          pageSize,
+          rowCount: employeeData.length,
+          hasNext,
+          nextCursor,
+          pageSizeOptions: [10, 25, 50],
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
+        }}
+      />
+    );
+  },
+};
+
+export const WithHeadlessColumnFilter: Story = {
+  args: {
+    variant: "headless",
+    columns: filterableColumns,
+    data: employeeData,
+    columnFilter: {
+      showColumnFilters: true,
+      filterTypes: ["contains", "equals", "startsWith"],
+    },
+  },
+};
+
+export const WithHeadlessAllFeatures: Story = {
+  render: () => {
+    const [pageSize, setPageSize] = useState(5);
+    const [pageIndex, setPageIndex] = useState(0);
+    const start = pageIndex * pageSize;
+
+    return (
+      <EmployeeTable
+        variant="headless"
+        columns={filterableColumns}
+        data={employeeData.slice(start, start + pageSize)}
+        sort={{ sortBy: [{ id: "salary", desc: true }] }}
+        pagination={{
+          pageIndex,
+          pageSize,
+          rowCount: employeeData.length,
+          onPageChange: (newPageIndex, newPageSize) => {
+            setPageIndex(newPageIndex);
+            setPageSize(newPageSize);
+          },
+        }}
+        globalFilter={{
+          filterPlaceholder: "Search employees...",
+          position: "left",
+          onGlobalFilterChange: fn(),
+        }}
+        columnFilter={{
+          showColumnFilters: false,
+          filterTypes: ["contains", "equals"],
+        }}
+        topToolbarActions={[
+          <Button key="add" variant="success" leftIcon={<IconPlus size={16} />} onClick={fn()}>
+            Add Employee
+          </Button>,
+        ]}
+        bottomToolbarActions={[
+          <Button key="bulk" variant="neutral" onClick={fn()}>
+            Bulk Action
+          </Button>,
+        ]}
+        exportCSV={{ enabled: true, filename: "headless-export" }}
+        reset={{ fn: fn() }}
+        refresh={{ fn: fn() }}
+      />
+    );
+  },
+};
