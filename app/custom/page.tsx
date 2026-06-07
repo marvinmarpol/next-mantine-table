@@ -222,6 +222,7 @@ export default function Page() {
             }}
             columnPinning={{ right: ["name.firstName"], left: [] }}
             columnFilter={{
+              showColumnFilters: true,
               filterTypes: ["greaterThan", "lessThan", "notEmpty"]
             }}
           />

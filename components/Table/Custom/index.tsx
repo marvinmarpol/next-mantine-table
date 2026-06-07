@@ -78,8 +78,8 @@ type ExportConfig<T> = {
 export type ColumnDefinition<T> = {
   header: string;
   accessorKey: string;
-  size?: number;
   accessorFn?: (originalRow: T) => unknown;
+  size?: number;
   Cell?: (opts: { row: T }) => ReactNode;
   filterType?: FilterType[];
   footer?: string;
@@ -228,10 +228,10 @@ export default function CustomTable<T extends Record<string, any>>({
   );
 
   const defaultFilename = "table-export";
-  const csvLeftIcon = exportCSV?.leftIcon ?? <IconCsv size={16} />;
+  const csvLeftIcon = exportCSV?.leftIcon ?? <IconCsv />;
   const csvRightIcon = exportCSV?.rightIcon;
   const csvFilename = exportCSV?.filename ?? defaultFilename;
-  const pdfLeftIcon = exportPDF?.leftIcon ?? <IconPdf size={16} />;
+  const pdfLeftIcon = exportPDF?.leftIcon ?? <IconPdf />;
   const pdfRightIcon = exportPDF?.rightIcon;
   const pdfFilename = exportPDF?.filename ?? defaultFilename;
 
@@ -472,7 +472,7 @@ export default function CustomTable<T extends Record<string, any>>({
             );
           }}
         >
-          <IconChevronLeft size={24} />
+          <IconChevronLeft />
         </ActionIcon>
         <ActionIcon
           variant="secondary"
@@ -488,7 +488,7 @@ export default function CustomTable<T extends Record<string, any>>({
             );
           }}
         >
-          <IconChevronRight size={24} />
+          <IconChevronRight />
         </ActionIcon>
       </Flex>
       {pagination.showPageNumber && (
@@ -645,12 +645,12 @@ export default function CustomTable<T extends Record<string, any>>({
                 ))}
                 {reset && (
                   <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                    {reset.customIcon ?? <IconEraser size={16} />}
+                    {reset.customIcon ?? <IconEraser />}
                   </ActionIcon>
                 )}
                 {refresh && (
                   <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                    {refresh.customIcon ?? <IconRefresh size={16} />}
+                    {refresh.customIcon ?? <IconRefresh />}
                   </ActionIcon>
                 )}
                 {renderExportButtons(selectedRows, pageRows)}
@@ -705,12 +705,12 @@ export default function CustomTable<T extends Record<string, any>>({
             ))}
             {reset && (
               <ActionIcon variant="neutral" size="lg" onClick={reset.fn}>
-                {reset.customIcon ?? <IconEraser size={16} />}
+                {reset.customIcon ?? <IconEraser />}
               </ActionIcon>
             )}
             {refresh && (
               <ActionIcon variant="neutral" size="lg" onClick={refresh.fn}>
-                {refresh.customIcon ?? <IconRefresh size={16} />}
+                {refresh.customIcon ?? <IconRefresh />}
               </ActionIcon>
             )}
             {renderExportButtons(selectedRows, pageRows)}
