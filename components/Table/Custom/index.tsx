@@ -93,6 +93,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
   columns: ColumnDefinition<T>[];
   data: T[];
   isLoading?: boolean;
+  isFetching?: boolean;
   sort?: {
     sortBy?: SortableColumn[];
     onSortingChange?: (sorting: SortableColumn[]) => void;
@@ -199,6 +200,7 @@ export default function CustomTable<T extends Record<string, any>>({
   columns,
   data,
   isLoading,
+  isFetching,
   noDataFallback,
   reset,
   refresh,
@@ -269,6 +271,7 @@ export default function CustomTable<T extends Record<string, any>>({
   });
 
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [localGlobalFilter, setLocalGlobalFilter] = useState("");
 
   const csvConfig = useMemo(
     () =>
@@ -526,8 +529,9 @@ export default function CustomTable<T extends Record<string, any>>({
       sorting,
       isFullScreen,
       showAlertBanner: error?.isError ?? false,
-      showProgressBars: isLoading,
-      isLoading: isLoading ?? false,
+      showProgressBars: isFetching ?? isLoading,
+      isLoading: isFetching ?? isLoading ?? false,
+      ...(globalFilter?.onGlobalFilterChange && { globalFilter: localGlobalFilter }),
       ...(pagination && {
         pagination: {
           pageIndex: pagination.pageIndex,
@@ -607,7 +611,8 @@ export default function CustomTable<T extends Record<string, any>>({
       },
       ...(globalFilter.onGlobalFilterChange && {
         onGlobalFilterChange: (updater: any) => {
-          const value = typeof updater === "function" ? updater("") : updater;
+          const value = typeof updater === "function" ? updater(localGlobalFilter) : updater;
+          setLocalGlobalFilter(String(value ?? ""));
           globalFilter.onGlobalFilterChange!(String(value ?? ""));
         },
       }),

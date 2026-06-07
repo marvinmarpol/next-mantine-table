@@ -1,266 +1,327 @@
 "use client";
 
-import { Code, Flex, MantineProvider } from "@mantine/core";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MRT_ColumnDef } from "mantine-react-table";
-import GenericTable from "@/components/Table/generic";
-import CustomTable, { ColumnDefinition } from "@/components/Table/Custom";
-import { mockApi } from "@/components/Table/Custom/mockData";
-import { Badge } from "@/components/UI/Badge";
-import { ActionIcon } from "@/components/UI/ActionIcon";
+import { MantineProvider } from "@mantine/core";
+import CustomTable, { type ColumnDefinition } from "@/components/Table/Custom";
 import {
-  Icon123,
-  Icon12Hours,
-  Icon2fa,
-  IconEraser,
-  IconRefresh,
-  IconTrash,
-} from "@tabler/icons-react";
+  data as employeeData,
+  type Employee,
+  mockApi,
+} from "@/components/Table/Custom/mockData";
 
-export default function Page() {
-  type Person = {
-    name: {
-      firstName: string;
-      lastName: string;
-    };
-    address: string;
-    city: string;
-    state: string;
-    extra?: any;
-  };
+// ── Mock server helpers ───────────────────────────────────────────────────────
 
-  const columns = useMemo<ColumnDefinition<Person>[]>(
-    () => [
-      {
-        accessorKey: "name.firstName", //access nested data with dot notation
-        header: "First Name",
-        filterType: undefined,
-      },
-      {
-        accessorKey: "name.lastName",
-        header: "Last Name",
-        Cell: ({ row }) => (
-          <Badge color={"green"}>
-            <h1>{row.name.lastName}</h1>
-          </Badge>
-        ),
-        filterType: ["equals", "startsWith"],
-      },
-      {
-        accessorKey: "address", //normal accessorKey
-        header: "Address",
-        filterType: ["contains"],
-      },
-      {
-        accessorKey: "city",
-        header: "City",
-      },
-      {
-        accessorKey: "state",
-        header: "State",
-        enableClickToCopy: true,
-        filterType: ["contains", "greaterThan"],
-      },
-      {
-        accessorKey: "extra",
-        header: "Extrasss",
-        enableClickToCopy: false,
-      },
+function resolvePath(obj: any, path: string): unknown {
+  return path.split(".").reduce((acc, key) => acc?.[key], obj);
+}
+
+function applyFilterFn(
+  value: unknown,
+  filterValue: unknown,
+  fn: string,
+): boolean {
+  const val = String(value ?? "").toLowerCase();
+  const fv = String(filterValue ?? "").toLowerCase();
+  switch (fn) {
+    case "equals":
+      return val === fv;
+    case "contains":
+      return val.includes(fv);
+    case "startsWith":
+      return val.startsWith(fv);
+    case "endsWith":
+      return val.endsWith(fv);
+    case "notEquals":
+      return val !== fv;
+    case "greaterThan":
+      return Number(value) > Number(filterValue);
+    case "lessThan":
+      return Number(value) < Number(filterValue);
+    case "empty":
+      return !value || val === "";
+    case "notEmpty":
+      return !!value && val !== "";
+    default:
+      return true;
+  }
+}
+
+const GLOBAL_SEARCH_COLS: (keyof Employee)[] = [
+  "firstName",
+  "lastName",
+  "email",
+  "jobTitle",
+];
+
+// ── Column definitions ────────────────────────────────────────────────────────
+
+const columns: ColumnDefinition<Employee>[] = [
+  {
+    accessorKey: "firstName",
+    header: "First Name",
+    enableSorting: true,
+    filterType: ["contains", "startsWith", "equals"],
+  },
+  {
+    accessorKey: "lastName",
+    header: "Last Name",
+    enableSorting: true,
+    filterType: ["contains", "startsWith", "equals"],
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+    enableClickToCopy: true,
+    filterType: ["contains", "equals"],
+  },
+  {
+    accessorKey: "jobTitle",
+    header: "Job Title",
+    filterType: ["contains", "equals"],
+  },
+  {
+    accessorKey: "salary",
+    header: "Salary",
+    enableSorting: true,
+    filterType: ["greaterThan", "lessThan", "equals"],
+  },
+  {
+    accessorKey: "startDate",
+    header: "Start Date",
+    filterType: undefined,
+  },
+];
+
+// ── Offset Pagination Example ─────────────────────────────────────────────────
+
+function OffsetExample() {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<
+    { id: string; value: unknown }[]
+  >([]);
+  const [columnFilterFns, setColumnFilterFns] = useState<
+    Record<string, string>
+  >({});
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([
+    { id: "firstName", desc: false },
+  ]);
+  const [resetKey, setResetKey] = useState(0);
+
+  const { data: result, isLoading, isFetching } = useQuery({
+    queryKey: [
+      "employees",
+      pageIndex,
+      pageSize,
+      globalFilter,
+      columnFilters,
+      columnFilterFns,
+      sorting,
     ],
-    [],
-  );
+    queryFn: async () => {
+      let rows = employeeData.slice();
 
-  //nested data is ok, see accessorKeys in ColumnDef below
-  const staticPeople: Person[] = [
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Robert",
-        lastName: "Smith",
-      },
-      address: "566 Brakus Inlet",
-      city: "Westerville",
-      state: "West Virginia",
-    },
-    {
-      name: {
-        firstName: "Kevin",
-        lastName: "Yan",
-      },
-      address: "7777 Kuhic Knoll",
-      city: "South Linda",
-      state: "West Virginia",
-    },
-    {
-      name: {
-        firstName: "John",
-        lastName: "Upton",
-      },
-      address: "722 Emie Stream",
-      city: "Huntington",
-      state: "Washington",
-    },
-    {
-      name: {
-        firstName: "Nathan",
-        lastName: "Harris",
-      },
-      address: "1 Kuhic Knoll",
-      city: "Ohiowa",
-      state: "Nebraska",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-    },
-    {
-      name: {
-        firstName: "Zachary",
-        lastName: "Davis",
-      },
-      address: "261 Battle Ford",
-      city: "Columbus",
-      state: "Ohio",
-      extra: <ActionIcon>test aja lah</ActionIcon>,
-    },
-  ];
+      if (globalFilter) {
+        const lower = globalFilter.toLowerCase();
+        rows = rows.filter((row) =>
+          GLOBAL_SEARCH_COLS.some((col) =>
+            String(row[col] ?? "")
+              .toLowerCase()
+              .includes(lower),
+          ),
+        );
+      }
 
-  const { data: result, isLoading } = useQuery({
-    queryKey: ["people"],
-    queryFn: () => mockApi({ delay: 3000, payload: staticPeople, status: 200 }),
+      for (const f of columnFilters) {
+        if (f.value === undefined || f.value === null || f.value === "")
+          continue;
+        const fn = columnFilterFns[f.id] ?? "contains";
+        rows = rows.filter((row) =>
+          applyFilterFn(resolvePath(row, f.id), f.value, fn),
+        );
+      }
+
+      if (sorting.length) {
+        const { id, desc } = sorting[0];
+        rows = [...rows].sort((a, b) => {
+          const av = resolvePath(a, id);
+          const bv = resolvePath(b, id);
+          const cmp =
+            typeof av === "number" && typeof bv === "number"
+              ? av - bv
+              : String(av ?? "").localeCompare(String(bv ?? ""));
+          return desc ? -cmp : cmp;
+        });
+      }
+
+      const rowCount = rows.length;
+      const pageRows = rows.slice(
+        pageIndex * pageSize,
+        (pageIndex + 1) * pageSize,
+      );
+
+      return mockApi({
+        delay: 1400,
+        payload: { rows: pageRows, rowCount },
+        status: 200,
+      });
+    },
+    placeholderData: (prev) => prev,
   });
 
-  const PAGE_SIZE = 5;
-  const [pageIndex, setPageIndex] = useState(0);
-  const start = pageIndex * PAGE_SIZE;
+  const handleReset = () => {
+    setGlobalFilter("");
+    setColumnFilters([]);
+    setColumnFilterFns({});
+    setSorting([{ id: "firstName", desc: false }]);
+    setPageIndex(0);
+    setResetKey((k) => k + 1);
+  };
 
   return (
-    <>
-      <MantineProvider>
-        <div className="p-20">
-          <CustomTable
-            variant="headless"
-            columns={columns}
-            data={result?.data ?? []}
-            isLoading={isLoading}
-            pagination={{
-              pageIndex: 0,
-              pageSize: 5,
-              rowCount: result?.data.length ?? 0,
-              /* hasNext: true,
-              nextCursor: 0, */
-              showPageNumber: true,
-              onPageChange: () => {},
-            }}
-            detailPanel={{
-              render: ({ address }) => {
-                return (
-                  <div className="p-2">
-                    <div className="mb-2 font-medium text-gray-700">
-                      Request Details:
-                    </div>
-                    <Code block className="max-h-96 overflow-auto">
-                      {address}
-                    </Code>
-                  </div>
-                );
-              },
-            }}
-            globalFilter={{
-              filterPlaceholder: "search something man",
-              position: 'right'
-            }}
-            columnPinning={{ right: ["name.firstName"], left: [] }}
-            columnFilter={{
-              showColumnFilters: false,
-              filterTypes: ["greaterThan", "lessThan", "notEmpty"],
-              /* onFiltersChange: (fns) => {
-                console.log(fns);
-              }, */
-            }}
-            exportPDF={{
-              enabled: true,
-            }}
-          />
-        </div>
-      </MantineProvider>
-    </>
+    <CustomTable
+      key={resetKey}
+      variant="headless"
+      columns={columns}
+      data={result?.data.rows ?? []}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      sort={{
+        sortBy: sorting,
+        onSortingChange: (next) => {
+          setSorting(next);
+          setPageIndex(0);
+        },
+      }}
+      pagination={{
+        pageIndex,
+        pageSize,
+        rowCount: result?.data.rowCount ?? 0,
+        pageSizeOptions: [5, 10, 25],
+        onPageChange: (newIndex, newSize) => {
+          setPageIndex(newIndex);
+          setPageSize(newSize);
+        },
+      }}
+      globalFilter={{
+        filterPlaceholder: "Search by name, email, job title...",
+        keyColumns: ["firstName", "lastName", "email", "jobTitle"],
+        onGlobalFilterChange: (value) => {
+          setGlobalFilter(value);
+          setPageIndex(0);
+        },
+      }}
+      columnFilter={{
+        showColumnFilters: true,
+        filterTypes: ["contains", "equals", "startsWith"],
+        onFiltersChange: (filters) => {
+          setColumnFilters(filters);
+          setPageIndex(0);
+        },
+        onFilterFnsChange: (fns) => {
+          setColumnFilterFns(fns);
+          setPageIndex(0);
+        },
+      }}
+      reset={{ fn: handleReset }}
+    />
+  );
+}
+
+// ── Cursor Pagination Example ─────────────────────────────────────────────────
+
+function CursorExample() {
+  const [cursor, setCursor] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [resetKey, setResetKey] = useState(0);
+
+  const { data: result, isLoading, isFetching } = useQuery({
+    queryKey: ["employees-cursor", cursor, pageSize, globalFilter],
+    queryFn: async () => {
+      let rows = employeeData.slice();
+
+      if (globalFilter) {
+        const lower = globalFilter.toLowerCase();
+        rows = rows.filter((row) =>
+          GLOBAL_SEARCH_COLS.some((col) =>
+            String(row[col] ?? "")
+              .toLowerCase()
+              .includes(lower),
+          ),
+        );
+      }
+
+      const rowCount = rows.length;
+      const pageRows = rows.slice(cursor, cursor + pageSize);
+      const hasNext = cursor + pageSize < rowCount;
+      const nextCursor = hasNext ? cursor + pageSize : undefined;
+
+      return mockApi({
+        delay: 600,
+        payload: { rows: pageRows, hasNext, nextCursor, rowCount },
+        status: 200,
+      });
+    },
+    placeholderData: (prev) => prev,
+  });
+
+  return (
+    <CustomTable<Employee>
+      key={resetKey}
+      variant="basic"
+      columns={columns}
+      data={result?.data.rows ?? []}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      pagination={{
+        pageIndex,
+        pageSize,
+        rowCount: result?.data.rowCount ?? 0,
+        hasNext: result?.data.hasNext,
+        nextCursor: result?.data.nextCursor,
+        pageSizeOptions: [5, 10, 25],
+        showPageNumber: true,
+        onPageChange: (newPageIndex, newPageSize, _hasNext, newCursor) => {
+          setPageIndex(newPageIndex);
+          setPageSize(newPageSize);
+          setCursor(newCursor !== undefined ? Number(newCursor) : 0);
+        },
+      }}
+      globalFilter={{
+        filterPlaceholder: "Search employees...",
+        onGlobalFilterChange: (value) => {
+          setGlobalFilter(value);
+          setCursor(0);
+          setPageIndex(0);
+        },
+      }}
+      reset={{
+        fn: () => {
+          setGlobalFilter("");
+          setCursor(0);
+          setPageIndex(0);
+          setResetKey((k) => k + 1);
+        },
+      }}
+    />
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function Page() {
+  return (
+    <MantineProvider>
+      <div className="p-8">
+        <h2 style={{ marginBottom: 16 }}>Offset Pagination</h2>
+        <OffsetExample />
+        <h2 style={{ marginTop: 48, marginBottom: 16 }}>Cursor Pagination</h2>
+        <CursorExample />
+      </div>
+    </MantineProvider>
   );
 }
