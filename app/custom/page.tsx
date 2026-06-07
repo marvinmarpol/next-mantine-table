@@ -226,6 +226,7 @@ export default function Page() {
               rowCount: result?.data.length ?? 0,
               hasNext: true,
               nextCursor: 0,
+              showPageNumber: true,
               onPageChange: () => {},
             }}
             detailPanel={{

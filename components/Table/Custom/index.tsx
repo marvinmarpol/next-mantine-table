@@ -132,7 +132,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
   };
   globalFilter?: {
     filterPlaceholder?: string;
-    position?: 'left' | 'right';
+    position?: "left" | "right";
     onGlobalFilterChange?: (value: string) => void;
     keyColumns?: string[];
   };
@@ -259,7 +259,8 @@ export default function CustomTable<T extends Record<string, any>>({
     for (const col of columns) {
       const hasExplicitType = "filterType" in col;
       if (hasExplicitType) {
-        if (col.filterType?.length) initial[col.accessorKey] = col.filterType[0];
+        if (col.filterType?.length)
+          initial[col.accessorKey] = col.filterType[0];
       } else if (globalFn) {
         initial[col.accessorKey] = globalFn;
       }
@@ -325,7 +326,7 @@ export default function CustomTable<T extends Record<string, any>>({
   const mappedColumns = useMemo(() => {
     const globalCount = columnFilter?.filterTypes?.length ?? 0;
     const cols = mapColumns(columns).map((col, i) => {
-      if ('filterType' in columns[i] || !globalCount) return col;
+      if ("filterType" in columns[i] || !globalCount) return col;
       const globalTypes = columnFilter?.filterTypes;
       return {
         ...col,
@@ -557,7 +558,7 @@ export default function CustomTable<T extends Record<string, any>>({
     enableColumnFilterModes: hasColumnFilter,
     enableFilterMatchHighlighting: !columnFilter?.onFiltersChange,
     enableColumnPinning: !!columnPinning,
-    enableGlobalFilter: !!globalFilter && !isLoading,
+    enableGlobalFilter: !!globalFilter,
     positionGlobalFilter: globalFilter?.position,
     paginationDisplayMode: "pages",
 
@@ -568,7 +569,7 @@ export default function CustomTable<T extends Record<string, any>>({
 
     renderEmptyRowsFallback: () =>
       noDataFallback ?? (
-        <div className="p-8 text-center text-[16px] italic text-gray-600">
+        <div className="flex p-8 text-center text-[16px] text-gray-600">
           No data to display
         </div>
       ),
@@ -585,6 +586,11 @@ export default function CustomTable<T extends Record<string, any>>({
       renderDetailPanel: ({ row }) => detailPanel.render(row.original),
       ...(detailPanel.canExpand && {
         getRowCanExpand: (row) => detailPanel.canExpand!(row.original),
+        enableExpandAll: false,
+        mantineExpandButtonProps: ({ row }) =>
+          !row.getCanExpand()
+            ? { style: { visibility: "hidden" as const, pointerEvents: "none" as const } }
+            : {},
       }),
     }),
 
@@ -721,6 +727,7 @@ export default function CustomTable<T extends Record<string, any>>({
           <Flex gap="xs" align="center" wrap="wrap" py="xs">
             {globalFilter && globalFilter.position === "left" && (
               <TextInput
+                mr="auto"
                 value={table.getState().globalFilter ?? ""}
                 placeholder={
                   globalFilter.filterPlaceholder ?? defaultSearchPlaceholder
