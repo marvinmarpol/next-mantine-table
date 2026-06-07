@@ -11,7 +11,15 @@ import {
   type MRT_FilterOption,
   type MRT_TableOptions,
 } from "mantine-react-table";
-import { Box, Flex, MantineColor, Portal, Select, Text, TextInput } from "@mantine/core";
+import {
+  Box,
+  Flex,
+  MantineColor,
+  Portal,
+  Select,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -147,7 +155,8 @@ function mapColumns<T extends Record<string, any>>(
   cols: ColumnDefinition<T>[],
 ): MRT_ColumnDef<T>[] {
   return cols.map((col) => {
-    const filterTypes = col.filterType ?? defaultFilterTypes;
+    const explicitFilterTypes = col.filterType;
+    const filterTypes = explicitFilterTypes ?? defaultFilterTypes;
     return {
       ...(col.accessorKey && {
         accessorKey: col.accessorKey as keyof T & string,
@@ -167,9 +176,15 @@ function mapColumns<T extends Record<string, any>>(
       }),
       ...(filterTypes?.length && {
         filterFn: filterTypes[0] as MRT_FilterOption,
-        ...(filterTypes.length > 1 && {
-          columnFilterModeOptions: filterTypes as MRT_FilterOption[],
-        }),
+        enableColumnFilter: !!explicitFilterTypes?.length,
+        enableColumnFilters: !!explicitFilterTypes?.length,
+        enableColumnFilterModes: !!(
+          explicitFilterTypes && explicitFilterTypes.length > 1
+        ),
+        ...(explicitFilterTypes &&
+          explicitFilterTypes.length > 1 && {
+            columnFilterModeOptions: explicitFilterTypes as MRT_FilterOption[],
+          }),
       }),
       ...(col.Cell && {
         Cell: (props: any) => col.Cell!({ row: props.row.original }),
@@ -295,7 +310,16 @@ export default function CustomTable<T extends Record<string, any>>({
   };
 
   const mappedColumns = useMemo(() => {
-    const cols = mapColumns(columns);
+    const globalCount = columnFilter?.filterTypes?.length ?? 0;
+    const cols = mapColumns(columns).map((col, i) => {
+      if ('filterType' in columns[i] || !globalCount) return col;
+      return {
+        ...col,
+        enableColumnFilter: true,
+        enableColumnFilters: true,
+        enableColumnFilterModes: globalCount > 1,
+      };
+    });
     if (!globalFilter?.keyColumns) return cols;
     return cols.map((col) => ({
       ...col,
@@ -517,6 +541,11 @@ export default function CustomTable<T extends Record<string, any>>({
     enableColumnPinning: !!columnPinning,
     enableGlobalFilter: !!globalFilter,
     paginationDisplayMode: "pages",
+
+    ...(columnFilter?.filterTypes?.length &&
+      columnFilter?.filterTypes?.length > 1 && {
+        columnFilterModeOptions: columnFilter.filterTypes,
+      }),
 
     renderEmptyRowsFallback: () =>
       noDataFallback ?? (

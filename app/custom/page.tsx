@@ -7,7 +7,14 @@ import GenericTable from "@/components/Table/generic";
 import CustomTable, { ColumnDefinition } from "@/components/Table/Custom";
 import { Badge } from "@/components/UI/Badge";
 import { ActionIcon } from "@/components/UI/ActionIcon";
-import { Icon123, Icon12Hours, Icon2fa, IconEraser, IconRefresh, IconTrash } from "@tabler/icons-react";
+import {
+  Icon123,
+  Icon12Hours,
+  Icon2fa,
+  IconEraser,
+  IconRefresh,
+  IconTrash,
+} from "@tabler/icons-react";
 
 export default function Page() {
   type Person = {
@@ -26,6 +33,7 @@ export default function Page() {
       {
         accessorKey: "name.firstName", //access nested data with dot notation
         header: "First Name",
+        filterType: undefined
       },
       {
         accessorKey: "name.lastName",
@@ -35,10 +43,12 @@ export default function Page() {
             <h1>{row.name.lastName}</h1>
           </Badge>
         ),
+        filterType: ["equals", "startsWith"]
       },
       {
         accessorKey: "address", //normal accessorKey
         header: "Address",
+        filterType: ["contains"]
       },
       {
         accessorKey: "city",
@@ -47,7 +57,8 @@ export default function Page() {
       {
         accessorKey: "state",
         header: "State",
-        enableClickToCopy: true
+        enableClickToCopy: true,
+        filterType: ["contains", "greaterThan"]
       },
       {
         accessorKey: "extra",
@@ -185,7 +196,7 @@ export default function Page() {
       address: "261 Battle Ford",
       city: "Columbus",
       state: "Ohio",
-      extra: <ActionIcon>test aja lah</ActionIcon>
+      extra: <ActionIcon>test aja lah</ActionIcon>,
     },
   ];
 
@@ -198,41 +209,21 @@ export default function Page() {
       <MantineProvider>
         <div className="p-20">
           <CustomTable
-            variant="basic"
+            variant="headless"
             columns={columns}
             data={data}
-            refresh={{fn: ()=>{alert('refresh')}, customIcon: <Icon2fa size={24}/>}}
-            reset={{fn: ()=>{alert('reset')}}}
-            sort={{ sortBy: [{ id: "name.firstName", desc: false }, { id: "address", desc: true }] }}
-            exportCSV={{
-              enabled: true,
-            }}
-            globalFilter={{
-              //onGlobalFilterChange: (value)=>{console.log(value)}
-            }}
             pagination={{
               pageIndex: 0,
-              pageSize: 10,
+              pageSize: 5,
               rowCount: data.length,
-              showPageNumber: true,
-              nextCursor: 0,
               hasNext: true,
-              onPageChange: (newPageIndex, newPageSize) =>{console.log(newPageIndex, newPageSize)}
-            }}
-            error={{
-              isError: true,
-              children: "test",
-            }}
-            /* pagination={{
-              pageIndex: 0,
-              pageSize: 10,
-              rowCount: data.length,
               nextCursor: 0,
-              hasNext: true,
-              onPageChange: (newPageIndex, newPageSize)=>{
-                setPageIndex(newPageIndex);
-              }
-            }} */
+              onPageChange: () => {},
+            }}
+            columnPinning={{ right: ["name.firstName"], left: [] }}
+            columnFilter={{
+              filterTypes: ["greaterThan", "lessThan", "notEmpty"]
+            }}
           />
         </div>
       </MantineProvider>
