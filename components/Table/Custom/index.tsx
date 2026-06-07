@@ -132,6 +132,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
   };
   globalFilter?: {
     filterPlaceholder?: string;
+    position?: 'left' | 'right';
     onGlobalFilterChange?: (value: string) => void;
     keyColumns?: string[];
   };
@@ -252,7 +253,19 @@ export default function CustomTable<T extends Record<string, any>>({
 
   const [columnFilterFns, setColumnFilterFns] = useState<
     Record<string, string>
-  >({});
+  >(() => {
+    const globalFn = columnFilter?.filterTypes?.[0];
+    const initial: Record<string, string> = {};
+    for (const col of columns) {
+      const hasExplicitType = "filterType" in col;
+      if (hasExplicitType) {
+        if (col.filterType?.length) initial[col.accessorKey] = col.filterType[0];
+      } else if (globalFn) {
+        initial[col.accessorKey] = globalFn;
+      }
+    }
+    return initial;
+  });
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -313,11 +326,15 @@ export default function CustomTable<T extends Record<string, any>>({
     const globalCount = columnFilter?.filterTypes?.length ?? 0;
     const cols = mapColumns(columns).map((col, i) => {
       if ('filterType' in columns[i] || !globalCount) return col;
+      const globalTypes = columnFilter?.filterTypes;
       return {
         ...col,
         enableColumnFilter: true,
         enableColumnFilters: true,
         enableColumnFilterModes: globalCount > 1,
+        ...(globalCount > 1 && {
+          columnFilterModeOptions: globalTypes as MRT_FilterOption[],
+        }),
       };
     });
     if (!globalFilter?.keyColumns) return cols;
@@ -536,10 +553,12 @@ export default function CustomTable<T extends Record<string, any>>({
     manualFiltering: !!columnFilter?.onFiltersChange,
     enableSorting: !!sort?.sortBy,
     enableRowSelection: hasExport,
-    enableColumnFilters: hasColumnFilter,
+    enableColumnFilters: hasColumnFilter && !isLoading,
     enableColumnFilterModes: hasColumnFilter,
+    enableFilterMatchHighlighting: !columnFilter?.onFiltersChange,
     enableColumnPinning: !!columnPinning,
-    enableGlobalFilter: !!globalFilter,
+    enableGlobalFilter: !!globalFilter && !isLoading,
+    positionGlobalFilter: globalFilter?.position,
     paginationDisplayMode: "pages",
 
     ...(columnFilter?.filterTypes?.length &&
@@ -699,7 +718,16 @@ export default function CustomTable<T extends Record<string, any>>({
     return (
       <>
         {headlessHasTopContent && (
-          <Flex gap="xs" align="center" wrap="wrap" p="xs">
+          <Flex gap="xs" align="center" wrap="wrap" py="xs">
+            {globalFilter && globalFilter.position === "left" && (
+              <TextInput
+                value={table.getState().globalFilter ?? ""}
+                placeholder={
+                  globalFilter.filterPlaceholder ?? defaultSearchPlaceholder
+                }
+                onChange={(e) => table.setGlobalFilter(e.target.value)}
+              />
+            )}
             {topToolbarActions?.map((node, i) => (
               <Fragment key={i}>{node}</Fragment>
             ))}
@@ -714,7 +742,7 @@ export default function CustomTable<T extends Record<string, any>>({
               </ActionIcon>
             )}
             {renderExportButtons(selectedRows, pageRows)}
-            {globalFilter && (
+            {globalFilter && globalFilter.position !== "left" && (
               <TextInput
                 ml="auto"
                 value={table.getState().globalFilter ?? ""}

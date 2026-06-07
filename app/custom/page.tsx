@@ -1,10 +1,12 @@
 "use client";
 
-import { Flex, MantineProvider } from "@mantine/core";
+import { Code, Flex, MantineProvider } from "@mantine/core";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MRT_ColumnDef } from "mantine-react-table";
 import GenericTable from "@/components/Table/generic";
 import CustomTable, { ColumnDefinition } from "@/components/Table/Custom";
+import { mockApi } from "@/components/Table/Custom/mockData";
 import { Badge } from "@/components/UI/Badge";
 import { ActionIcon } from "@/components/UI/ActionIcon";
 import {
@@ -33,7 +35,7 @@ export default function Page() {
       {
         accessorKey: "name.firstName", //access nested data with dot notation
         header: "First Name",
-        filterType: undefined
+        filterType: undefined,
       },
       {
         accessorKey: "name.lastName",
@@ -43,12 +45,12 @@ export default function Page() {
             <h1>{row.name.lastName}</h1>
           </Badge>
         ),
-        filterType: ["equals", "startsWith"]
+        filterType: ["equals", "startsWith"],
       },
       {
         accessorKey: "address", //normal accessorKey
         header: "Address",
-        filterType: ["contains"]
+        filterType: ["contains"],
       },
       {
         accessorKey: "city",
@@ -58,7 +60,7 @@ export default function Page() {
         accessorKey: "state",
         header: "State",
         enableClickToCopy: true,
-        filterType: ["contains", "greaterThan"]
+        filterType: ["contains", "greaterThan"],
       },
       {
         accessorKey: "extra",
@@ -70,7 +72,7 @@ export default function Page() {
   );
 
   //nested data is ok, see accessorKeys in ColumnDef below
-  const data: Person[] = [
+  const staticPeople: Person[] = [
     {
       name: {
         firstName: "Zachary",
@@ -200,6 +202,11 @@ export default function Page() {
     },
   ];
 
+  const { data: result, isLoading } = useQuery({
+    queryKey: ["people"],
+    queryFn: () => mockApi({ delay: 3000, payload: staticPeople, status: 200 }),
+  });
+
   const PAGE_SIZE = 5;
   const [pageIndex, setPageIndex] = useState(0);
   const start = pageIndex * PAGE_SIZE;
@@ -209,21 +216,46 @@ export default function Page() {
       <MantineProvider>
         <div className="p-20">
           <CustomTable
-            variant="headless"
+            variant="basic"
             columns={columns}
-            data={data}
+            data={result?.data ?? []}
+            isLoading={isLoading}
             pagination={{
               pageIndex: 0,
               pageSize: 5,
-              rowCount: data.length,
+              rowCount: result?.data.length ?? 0,
               hasNext: true,
               nextCursor: 0,
               onPageChange: () => {},
             }}
+            detailPanel={{
+              render: ({ address }) => {
+                return (
+                  <div className="p-2">
+                    <div className="mb-2 font-medium text-gray-700">
+                      Request Details:
+                    </div>
+                    <Code block className="max-h-96 overflow-auto">
+                      {address}
+                    </Code>
+                  </div>
+                );
+              },
+            }}
+            globalFilter={{
+              filterPlaceholder: "search something man",
+              position: 'right'
+            }}
             columnPinning={{ right: ["name.firstName"], left: [] }}
             columnFilter={{
-              showColumnFilters: true,
-              filterTypes: ["greaterThan", "lessThan", "notEmpty"]
+              showColumnFilters: false,
+              filterTypes: ["greaterThan", "lessThan", "notEmpty"],
+              /* onFiltersChange: (fns) => {
+                console.log(fns);
+              }, */
+            }}
+            exportPDF={{
+              enabled: true,
             }}
           />
         </div>
