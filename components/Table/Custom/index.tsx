@@ -556,7 +556,7 @@ export default function CustomTable<T extends Record<string, any>>({
 
     manualSorting: !!sort?.onSortingChange,
     manualFiltering: !!columnFilter?.onFiltersChange,
-    enableSorting: !!sort?.sortBy,
+    enableSorting: !!sort?.sortBy || columns.some((c) => c.enableSorting === true),
     enableRowSelection: hasExport,
     enableColumnFilters: hasColumnFilter && !isLoading,
     enableColumnFilterModes: hasColumnFilter,
@@ -618,13 +618,11 @@ export default function CustomTable<T extends Record<string, any>>({
       }),
     }),
 
-    ...(sort?.sortBy && {
-      onSortingChange: (updater: any) => {
-        const next = typeof updater === "function" ? updater(sorting) : updater;
-        setSorting(next);
-        sort?.onSortingChange?.(next as SortableColumn[]);
-      },
-    }),
+    onSortingChange: (updater: any) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      setSorting(next);
+      sort?.onSortingChange?.(next as SortableColumn[]);
+    },
 
     ...(columnFilter?.onFiltersChange && {
       onColumnFiltersChange: (updater: any) => {
