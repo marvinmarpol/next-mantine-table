@@ -110,7 +110,10 @@ export interface CustomTableProps<T extends Record<string, any>> {
   detailPanel?: {
     render: (row: T) => ReactNode;
     canExpand?: (row: T) => boolean;
+    expandOnRowClick?: boolean;
+    hideExpandColumn?: boolean;
   };
+  onRowClick?: (row: T) => void;
   error?: {
     isError: boolean;
     children: ReactNode;
@@ -215,6 +218,7 @@ export default function CustomTable<T extends Record<string, any>>({
   bottomToolbarActions,
   exportCSV,
   exportPDF,
+  onRowClick,
 }: CustomTableProps<T>) {
   const isCursorPagination =
     !!pagination &&
@@ -524,6 +528,7 @@ export default function CustomTable<T extends Record<string, any>>({
     columns: mappedColumns,
     data,
     layoutMode: "grid",
+    enableColumnActions: false,
 
     state: {
       sorting,
@@ -531,7 +536,9 @@ export default function CustomTable<T extends Record<string, any>>({
       showAlertBanner: error?.isError ?? false,
       showProgressBars: isFetching ?? isLoading,
       isLoading: isFetching ?? isLoading ?? false,
-      ...(globalFilter?.onGlobalFilterChange && { globalFilter: localGlobalFilter }),
+      ...(globalFilter?.onGlobalFilterChange && {
+        globalFilter: localGlobalFilter,
+      }),
       ...(pagination && {
         pagination: {
           pageIndex: pagination.pageIndex,
@@ -541,6 +548,9 @@ export default function CustomTable<T extends Record<string, any>>({
       ...(columnFilter?.onFiltersChange && { columnFilters }),
       ...(columnFilter?.onFilterFnsChange && {
         columnFilterFns: columnFilterFns as Record<string, MRT_FilterOption>,
+      }),
+      ...(detailPanel?.hideExpandColumn && {
+        columnVisibility: { "mrt-row-expand": false },
       }),
     },
 
@@ -556,7 +566,8 @@ export default function CustomTable<T extends Record<string, any>>({
 
     manualSorting: !!sort?.onSortingChange,
     manualFiltering: !!columnFilter?.onFiltersChange,
-    enableSorting: !!sort?.sortBy || columns.some((c) => c.enableSorting === true),
+    enableSorting:
+      !!sort?.sortBy || columns.some((c) => c.enableSorting === true),
     enableRowSelection: hasExport,
     enableColumnFilters: hasColumnFilter && !isLoading,
     enableColumnFilterModes: hasColumnFilter,
@@ -605,13 +616,30 @@ export default function CustomTable<T extends Record<string, any>>({
       }),
     }),
 
+    ...((detailPanel?.expandOnRowClick || !!onRowClick) && {
+      mantineTableBodyRowProps: ({ row }) => ({
+        onClick: (event: React.MouseEvent<HTMLTableRowElement>) => {
+          if ((event.target as HTMLElement).closest("button")) return;
+          if (detailPanel?.expandOnRowClick && (row.getCanExpand() || detailPanel?.canExpand === undefined)) {
+            row.toggleExpanded();
+            return;
+          }
+          onRowClick?.(row.original);
+        },
+        style: { cursor: "pointer" },
+      }),
+    }),
+
     ...(globalFilter && {
       mantineSearchTextInputProps: {
         placeholder: globalFilter.filterPlaceholder ?? defaultSearchPlaceholder,
       },
       ...(globalFilter.onGlobalFilterChange && {
         onGlobalFilterChange: (updater: any) => {
-          const value = typeof updater === "function" ? updater(localGlobalFilter) : updater;
+          const value =
+            typeof updater === "function"
+              ? updater(localGlobalFilter)
+              : updater;
           setLocalGlobalFilter(String(value ?? ""));
           globalFilter.onGlobalFilterChange!(String(value ?? ""));
         },

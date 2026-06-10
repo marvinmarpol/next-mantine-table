@@ -410,7 +410,9 @@ export const WithDetailPanel: Story = {
             <strong>Salary:</strong> ${row.salary.toLocaleString()}
           </div>
         ),
-        canExpand: (row) => row.salary >= 60_000,
+        //canExpand: (row) => row.salary >= 60_000,
+        expandOnRowClick: true,
+        hideExpandColumn: false,
       }}
     />
   ),
