@@ -154,6 +154,7 @@ export interface CustomTableProps<T extends Record<string, any>> {
   bottomToolbarActions?: ReactNode[];
   exportCSV?: ExportConfig<T>;
   exportPDF?: ExportConfig<T>;
+  enableColumnActions?: boolean;
 }
 
 function mapColumns<T extends Record<string, any>>(
@@ -219,6 +220,7 @@ export default function CustomTable<T extends Record<string, any>>({
   exportCSV,
   exportPDF,
   onRowClick,
+  enableColumnActions,
 }: CustomTableProps<T>) {
   const isCursorPagination =
     !!pagination &&
@@ -528,7 +530,7 @@ export default function CustomTable<T extends Record<string, any>>({
     columns: mappedColumns,
     data,
     layoutMode: "grid",
-    enableColumnActions: false,
+    enableColumnActions: enableColumnActions ?? false,
 
     state: {
       sorting,
